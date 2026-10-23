@@ -4,24 +4,37 @@ using LogonWatch.Model;
 namespace LogonWatch.Tests;
 
 /**
- * WHAT:   Tests for the four detection rules, each with an attack that
+ * WHAT:   Tests for the four time-window rules (the injection rule has
+ *         its own file, InjectionTests.cs), each with an attack that
  *         must fire and a near-miss that must not.
  * WHY:    A rule that fires too easily buries real attacks in noise; one
  *         that never fires is worse. Both sides are checked at the boundary.
  */
 public class RuleTests
 {
-	/** WHAT: default settings: brute force 10 in 5 min, spray 5 accounts, distributed 5 sources, success after 5. */
+	/**
+	 * WHAT:   The default settings: brute force 10 in 5 min, spray 5 accounts,
+	 *         distributed 5 sources, success after 5 failures.
+	 * WHY:    Each test builds its attack just above or just below these
+	 *         numbers, so the boundaries are tested exactly.
+	 */
 	private static readonly DetectionSettings Settings = new();
 
 	/**
-	 * WHAT:   Runs one rule on sorted events.
-	 * RETURN: its alerts
+	 * WHAT:   Runs one rule on events, after the same cleaning a real run does.
+	 * WHY:    Tests one rule in isolation, without the other rules' alerts.
+	 * PRE:    rule and events are not null
+	 * RETURN: the rule's alerts
 	 */
 	private static List<Alert> Run(IDetectionRule rule, IEnumerable<LogonEvent> events) =>
 		rule.Evaluate(Detector.Prepare(events), Settings).ToList();
 
-	/** WHAT: exactly 10 failures in 5 minutes. WHY: the threshold itself must fire. */
+	/**
+	 * WHAT:   Exactly 10 failures in 5 minutes.
+	 * WHY:    The threshold itself must fire.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void BruteForceFiresAtThreshold()
 	{
@@ -34,28 +47,48 @@ public class RuleTests
 		Assert.Equal("203.0.113.7", alert.Source);
 	}
 
-	/** WHAT: 9 failures. WHY: one below the threshold is a user having a bad day. */
+	/**
+	 * WHAT:   9 failures.
+	 * WHY:    One below the threshold is a user having a bad day.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void BruteForceIgnoresBelowThreshold()
 	{
 		Assert.Empty(Run(new BruteForceRule(), TestData.Failures(9, spacing: 30)));
 	}
 
-	/** WHAT: 10 failures spread over 10 minutes. WHY: too slow for a 5-minute window. */
+	/**
+	 * WHAT:   10 failures spread over 10 minutes.
+	 * WHY:    Too slow for a 5-minute window.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void BruteForceIgnoresSlowFailures()
 	{
 		Assert.Empty(Run(new BruteForceRule(), TestData.Failures(10, spacing: 65)));
 	}
 
-	/** WHAT: 50 or more failures. WHY: five times the threshold is a large attack, so High. */
+	/**
+	 * WHAT:   50 or more failures.
+	 * WHY:    Five times the threshold is a large attack, so High.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void BruteForceLargeAttackIsHigh()
 	{
 		Assert.Equal(Severity.High, Assert.Single(Run(new BruteForceRule(), TestData.Failures(50, spacing: 1))).Severity);
 	}
 
-	/** WHAT: two attacks an hour apart. WHY: separate bursts must be separate alerts, not one. */
+	/**
+	 * WHAT:   Two attacks an hour apart.
+	 * WHY:    Separate bursts must be separate alerts, not one.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void BruteForceSplitsSeparateBursts()
 	{
@@ -64,7 +97,12 @@ public class RuleTests
 		Assert.Equal(2, Run(new BruteForceRule(), events).Count);
 	}
 
-	/** WHAT: 200 failures in a row. WHY: one long attack must be one alert, not 190 overlapping ones. */
+	/**
+	 * WHAT:   200 failures in a row.
+	 * WHY:    One long attack must be one alert, not 190 overlapping ones.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void BruteForceMergesOneLongAttack()
 	{
@@ -72,7 +110,12 @@ public class RuleTests
 		Assert.Equal(200, alert.Attempts);
 	}
 
-	/** WHAT: failures typed at the machine itself. WHY: a person mistyping is reported, but only as Low. */
+	/**
+	 * WHAT:   Failures typed at the machine itself.
+	 * WHY:    A person mistyping is reported, but only as Low.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void BruteForceLocalIsLow()
 	{
@@ -80,7 +123,12 @@ public class RuleTests
 			Assert.Single(Run(new BruteForceRule(), TestData.Failures(10, spacing: 5, source: "-"))).Severity);
 	}
 
-	/** WHAT: one source, 5 different accounts. WHY: the spray threshold itself must fire. */
+	/**
+	 * WHAT:   One source, 5 different accounts.
+	 * WHY:    The spray threshold itself must fire.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SprayFiresOnManyAccounts()
 	{
@@ -92,14 +140,24 @@ public class RuleTests
 		Assert.Equal(5, alert.Accounts.Count);
 	}
 
-	/** WHAT: one account mistyped 20 times. WHY: many attempts at one account is not spraying. */
+	/**
+	 * WHAT:   One account mistyped 20 times.
+	 * WHY:    Many attempts at one account is not spraying.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SprayIgnoresOneAccount()
 	{
 		Assert.Empty(Run(new PasswordSprayRule(), TestData.Failures(20, spacing: 5)));
 	}
 
-	/** WHAT: "Admin" and "admin". WHY: Windows account names ignore case, so they are one account. */
+	/**
+	 * WHAT:   "Admin" and "admin".
+	 * WHY:    Windows account names ignore case, so they are one account.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SprayCountsAccountsIgnoringCase()
 	{
@@ -108,7 +166,12 @@ public class RuleTests
 		Assert.Empty(Run(new PasswordSprayRule(), events));
 	}
 
-	/** WHAT: 5 sources, one account. WHY: a botnet spreads guesses so no single address stands out. */
+	/**
+	 * WHAT:   5 sources, one account.
+	 * WHY:    A botnet spreads guesses so no single address stands out.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void DistributedFiresOnManySources()
 	{
@@ -119,7 +182,12 @@ public class RuleTests
 		Assert.Equal(new[] { "backup" }, alert.Accounts);
 	}
 
-	/** WHAT: 4 sources. WHY: one below the threshold. */
+	/**
+	 * WHAT:   4 sources.
+	 * WHY:    One below the threshold.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void DistributedIgnoresFewSources()
 	{
@@ -127,7 +195,12 @@ public class RuleTests
 		Assert.Empty(Run(new DistributedAttackRule(), events));
 	}
 
-	/** WHAT: 5 failures, then a success from the same address. WHY: the attack probably worked: Critical. */
+	/**
+	 * WHAT:   5 failures, then a success from the same address.
+	 * WHY:    The attack probably worked: Critical.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SuccessAfterFailuresIsCritical()
 	{
@@ -140,7 +213,12 @@ public class RuleTests
 		Assert.Contains("compromised", alert.Summary);
 	}
 
-	/** WHAT: failures from one address, success from another, same account. WHY: attackers switch addresses. */
+	/**
+	 * WHAT:   Failures from one address, success from another, same account.
+	 * WHY:    Attackers switch addresses.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SuccessAfterFailuresMatchesAccount()
 	{
@@ -149,7 +227,12 @@ public class RuleTests
 		Assert.Single(Run(new SuccessAfterFailuresRule(), events));
 	}
 
-	/** WHAT: the failures were an hour before the success. WHY: outside the window, they are unrelated. */
+	/**
+	 * WHAT:   The failures were an hour before the success.
+	 * WHY:    Outside the window, they are unrelated.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SuccessAfterOldFailuresIsIgnored()
 	{
@@ -158,7 +241,12 @@ public class RuleTests
 		Assert.Empty(Run(new SuccessAfterFailuresRule(), events));
 	}
 
-	/** WHAT: 4 failures then a success. WHY: someone remembering their password on the 5th try is normal. */
+	/**
+	 * WHAT:   4 failures then a success.
+	 * WHY:    Someone remembering their password on the 5th try is normal.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SuccessAfterFewFailuresIsIgnored()
 	{
@@ -167,7 +255,12 @@ public class RuleTests
 		Assert.Empty(Run(new SuccessAfterFailuresRule(), events));
 	}
 
-	/** WHAT: three successes right after one attack. WHY: one break-in, one alert. */
+	/**
+	 * WHAT:   Three successes right after one attack.
+	 * WHY:    One break-in, one alert.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SuccessAfterFailuresAlertsOnce()
 	{

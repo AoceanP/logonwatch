@@ -6,26 +6,50 @@ namespace LogonWatch.Cli;
 /**
  * <summary>
  * WHAT:   Where the events come from.
+ * WHY:    Exactly one input is allowed per run; an enum makes that a single value.
  * </summary>
  */
 public enum InputKind
 {
-	/** <summary>WHAT: the live Windows Security log (needs admin).</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   The live Windows Security log.
+	 * WHY:    Where real attacks show up; reading it needs admin rights.
+	 * </summary>
+	 */
 	Live,
 
-	/** <summary>WHAT: an exported .evtx file.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   An exported .evtx file.
+	 * WHY:    Analyses a log copied from another machine.
+	 * </summary>
+	 */
 	EventFile,
 
-	/** <summary>WHAT: a JSON-lines file.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   A JSON-lines file.
+	 * WHY:    Works on any system and with data from other tools.
+	 * </summary>
+	 */
 	JsonLines,
 
-	/** <summary>WHAT: the built-in demo scenario.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   The built-in demo scenario.
+	 * WHY:    Shows every rule firing, with fake data and no setup.
+	 * </summary>
+	 */
 	Demo,
 }
 
 /**
  * <summary>
  * WHAT:   The parsed command line.
+ * WHY:    An immutable record: once parsed and checked, the options cannot
+ *         change halfway through a run.
+ * PRE:    Path is set for EventFile and JsonLines; Settings are valid.
  * </summary>
  * <param name="Input">where the events come from</param>
  * <param name="Path">the file for EventFile and JsonLines, otherwise null</param>
@@ -45,7 +69,9 @@ public sealed record Options(
 /**
  * <summary>
  * WHAT:   Thrown for a bad command line.
- * WHY:    Lets the program print the message with the usage and exit 2.
+ * WHY:    Lets the program print the message with the usage and exit 2,
+ *         the usual exit code for "you called it wrong".
+ * PRE:    message names the problem
  * </summary>
  * <param name="message">what is wrong with the command line</param>
  */
@@ -60,7 +86,12 @@ public sealed class UsageException(string message) : Exception(message);
  */
 public static class OptionsParser
 {
-	/** <summary>WHAT: the help text.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   The help text.
+	 * WHY:    Printed for --help, with no arguments, and after every usage error.
+	 * </summary>
+	 */
 	public const string Usage = """
 		usage: logonwatch <input> [options]
 
@@ -85,10 +116,12 @@ public static class OptionsParser
 	/**
 	 * <summary>
 	 * WHAT:   Parses the arguments.
-	 * WHY:    Returns null for --help and --version, which print and exit
-	 *         without reading anything.
-	 * THROWS: UsageException naming the problem
+	 * WHY:    Returns null for --help, --version and no arguments, which print
+	 *         and exit without reading anything.
+	 * PRE:    args is not null
+	 * POST:   showVersion is true only when --version was given
 	 * RETURN: the options, or null when only help or the version was asked for
+	 * THROWS: UsageException naming the problem
 	 * </summary>
 	 * <param name="args">the command-line arguments</param>
 	 * <param name="showVersion">set to true when --version was given</param>
@@ -97,6 +130,7 @@ public static class OptionsParser
 	 */
 	public static Options? Parse(string[] args, out bool showVersion)
 	{
+		// start from the defaults; each option below overrides one of them
 		showVersion = false;
 		InputKind? input = null;
 		string? path = null;
@@ -105,6 +139,7 @@ public static class OptionsParser
 		bool json = false;
 		bool redact = false;
 
+		// 1. walk the arguments left to right; options with a value consume the next argument too
 		for (int i = 0; i < args.Length; i++)
 		{
 			string argument = args[i];
@@ -133,6 +168,7 @@ public static class OptionsParser
 					since = ParseDuration(Value(args, ref i), argument);
 					break;
 				case "--threshold":
+					// "with" copies the settings and changes one value; DetectionSettings stays immutable
 					settings = settings with { BruteForceThreshold = ParseCount(Value(args, ref i), argument) };
 					break;
 				case "--window":
@@ -149,6 +185,7 @@ public static class OptionsParser
 			}
 		}
 
+		// 2. an input is required, except that no arguments at all just shows the help
 		if (input is null)
 		{
 			if (args.Length == 0)
@@ -158,6 +195,7 @@ public static class OptionsParser
 			throw new UsageException("choose an input: --live, --file, --jsonl or --demo");
 		}
 
+		// 3. check the settings now, so a bad --threshold is a usage error (exit 2), not a crash later
 		try
 		{
 			settings.Validate();
@@ -173,8 +211,9 @@ public static class OptionsParser
 	 * <summary>
 	 * WHAT:   Parses a duration such as "30s", "5m", "24h" or "7d".
 	 * WHY:    Shorter to type than "00:05:00", and the unit is never ambiguous.
-	 * THROWS: UsageException if the text is not a positive number with a unit
+	 * PRE:    text and option are not null
 	 * RETURN: the duration
+	 * THROWS: UsageException if the text is not a positive number with a unit
 	 * </summary>
 	 * <param name="text">the duration text</param>
 	 * <param name="option">the option it belongs to, for the message</param>
@@ -183,10 +222,12 @@ public static class OptionsParser
 	 */
 	public static TimeSpan ParseDuration(string text, string option)
 	{
+		// everything but the last character must be a whole number above 0 (NumberStyles.None: no sign, no spaces)
 		if (text.Length >= 2
 			&& int.TryParse(text.AsSpan(0, text.Length - 1), NumberStyles.None, CultureInfo.InvariantCulture, out int amount)
 			&& amount > 0)
 		{
+			// the last character is the unit
 			switch (char.ToLowerInvariant(text[^1]))
 			{
 				case 's': return TimeSpan.FromSeconds(amount);
@@ -201,8 +242,11 @@ public static class OptionsParser
 	/**
 	 * <summary>
 	 * WHAT:   Parses a whole number above zero.
-	 * THROWS: UsageException otherwise
+	 * WHY:    NumberStyles.None refuses "+5", " 5" and "-5", which int.Parse
+	 *         would partly accept by default.
+	 * PRE:    text and option are not null
 	 * RETURN: the number
+	 * THROWS: UsageException otherwise
 	 * </summary>
 	 * <param name="text">the text</param>
 	 * <param name="option">the option it belongs to, for the message</param>
@@ -221,8 +265,11 @@ public static class OptionsParser
 	/**
 	 * <summary>
 	 * WHAT:   Returns the value after an option and moves past it.
-	 * THROWS: UsageException if the option is the last argument
+	 * WHY:    "--file" as the last argument would otherwise read past the array.
+	 * PRE:    i is the index of an option that takes a value
+	 * POST:   i points at the value, so the caller's loop skips it
 	 * RETURN: the value
+	 * THROWS: UsageException if the option is the last argument
 	 * </summary>
 	 * <param name="args">the arguments</param>
 	 * <param name="i">the option's index; moved to the value's index</param>
@@ -241,6 +288,10 @@ public static class OptionsParser
 	/**
 	 * <summary>
 	 * WHAT:   Records the input, refusing a second one.
+	 * WHY:    "--demo --live" is ambiguous, so it is an error, not "last one wins".
+	 * PRE:    none
+	 * POST:   current is next
+	 * RETURN: nothing
 	 * THROWS: UsageException if an input was already chosen
 	 * </summary>
 	 * <param name="current">the input chosen so far</param>

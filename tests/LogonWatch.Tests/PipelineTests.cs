@@ -14,7 +14,12 @@ namespace LogonWatch.Tests;
  */
 public class PipelineTests
 {
-	/** WHAT: the demo scenario. WHY: it is the README example, so it must produce exactly these five alerts. */
+	/**
+	 * WHAT:   The demo scenario.
+	 * WHY:    It is the README example, so it must produce exactly these five alerts.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void DemoFiresEveryRuleOnce()
 	{
@@ -25,7 +30,12 @@ public class PipelineTests
 		Assert.Equal(Severity.Critical, alerts[0].Severity);
 	}
 
-	/** WHAT: computer accounts, SYSTEM and service logons. WHY: they log on all day and are not people. */
+	/**
+	 * WHAT:   Computer accounts, SYSTEM and service logons.
+	 * WHY:    They log on all day and are not people.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void DetectorIgnoresServiceAccounts()
 	{
@@ -39,7 +49,12 @@ public class PipelineTests
 		Assert.Equal(new[] { "alice" }, Detector.Prepare(events).Select(e => e.User));
 	}
 
-	/** WHAT: events in reverse order. WHY: combined logs are not sorted; the detector must sort them. */
+	/**
+	 * WHAT:   Events in reverse order.
+	 * WHY:    Combined logs are not sorted; the detector must sort them.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void DetectorSortsEvents()
 	{
@@ -48,14 +63,24 @@ public class PipelineTests
 		Assert.Single(Detector.Run(events, new DetectionSettings()));
 	}
 
-	/** WHAT: a threshold of 1. WHY: it would turn every typo into an alert, so it is refused. */
+	/**
+	 * WHAT:   A threshold of 1.
+	 * WHY:    It would turn every typo into an alert, so it is refused.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void DetectorRejectsBadSettings()
 	{
 		Assert.Throws<ArgumentException>(() => Detector.Run([], new DetectionSettings { BruteForceThreshold = 1 }));
 	}
 
-	/** WHAT: a JSON-lines file with comments and a blank line. WHY: the documented file format. */
+	/**
+	 * WHAT:   A JSON-lines file with comments and a blank line.
+	 * WHY:    The documented file format.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void JsonLinesReadsEvents()
 	{
@@ -73,7 +98,12 @@ public class PipelineTests
 		Assert.Equal(10, events[1].LogonType);
 	}
 
-	/** WHAT: bad lines. WHY: the error must name the line, not silently skip data that might hide an attack. */
+	/**
+	 * WHAT:   Bad lines.
+	 * WHY:    The error must name the line, not silently skip data that might hide an attack.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData("{not json", "line 1: not valid JSON")]
 	[InlineData("{\"time\":\"2026-10-21T10:00:00Z\",\"outcome\":\"failure\"}", "line 1: \"time\", \"user\" and \"source\" are required")]
@@ -86,14 +116,24 @@ public class PipelineTests
 		Assert.Contains(expected, error.Message);
 	}
 
-	/** WHAT: a missing file. WHY: a clear message, not a stack trace. */
+	/**
+	 * WHAT:   A missing file.
+	 * WHY:    A clear message, not a stack trace.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void JsonLinesMissingFile()
 	{
 		Assert.Throws<SourceException>(() => JsonLinesSource.FromFile("no-such-file.jsonl"));
 	}
 
-	/** WHAT: redaction. WHY: the same name always gets the same placeholder, and local stays local. */
+	/**
+	 * WHAT:   Redaction.
+	 * WHY:    The same name always gets the same placeholder, and local stays local.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void RedactorIsConsistent()
 	{
@@ -109,7 +149,12 @@ public class PipelineTests
 		Assert.Equal("-", other.Source);
 	}
 
-	/** WHAT: the text report. WHY: alerts first, then the top sources, with "this machine" for local. */
+	/**
+	 * WHAT:   The text report.
+	 * WHY:    Alerts first, then the top sources, with "this machine" for local.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void TextReportShowsAlertsAndSources()
 	{
@@ -126,7 +171,12 @@ public class PipelineTests
 		Assert.True(text.IndexOf("brute-force", StringComparison.Ordinal) < text.IndexOf("Most failed", StringComparison.Ordinal));
 	}
 
-	/** WHAT: the JSON report. WHY: severities as words, so scripts can read "Critical" instead of 3. */
+	/**
+	 * WHAT:   The JSON report.
+	 * WHY:    Severities as words, so scripts can read "Critical" instead of 3.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void JsonReportUsesWords()
 	{
@@ -136,7 +186,12 @@ public class PipelineTests
 		Assert.Contains("\"severity\": \"Critical\"", output.ToString());
 	}
 
-	/** WHAT: durations. WHY: "30s", "5m", "24h", "7d" are the documented forms. */
+	/**
+	 * WHAT:   Durations.
+	 * WHY:    "30s", "5m", "24h", "7d" are the documented forms.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData("30s", 30)]
 	[InlineData("5m", 300)]
@@ -147,7 +202,12 @@ public class PipelineTests
 		Assert.Equal(TimeSpan.FromSeconds(seconds), OptionsParser.ParseDuration(text, "--since"));
 	}
 
-	/** WHAT: bad durations. WHY: zero, negative, no unit or an unknown unit must be refused. */
+	/**
+	 * WHAT:   Bad durations.
+	 * WHY:    Zero, negative, no unit or an unknown unit must be refused.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData("0m")]
 	[InlineData("-5m")]
@@ -159,7 +219,12 @@ public class PipelineTests
 		Assert.Throws<UsageException>(() => OptionsParser.ParseDuration(text, "--since"));
 	}
 
-	/** WHAT: bad command lines. WHY: each must give exit code 2 and a message naming the problem. */
+	/**
+	 * WHAT:   Bad command lines.
+	 * WHY:    Each must give exit code 2 and a message naming the problem.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData(new[] { "--demo", "--live" }, "choose only one input")]
 	[InlineData(new[] { "--json" }, "choose an input")]
@@ -175,7 +240,12 @@ public class PipelineTests
 		Assert.Contains(expected, error.ToString());
 	}
 
-	/** WHAT: the whole program on the demo. WHY: exit code 3 means alerts were found. */
+	/**
+	 * WHAT:   The whole program on the demo.
+	 * WHY:    Exit code 3 means alerts were found.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void ProgramExitCodeShowsAlerts()
 	{
@@ -184,7 +254,12 @@ public class PipelineTests
 		Assert.Contains("[CRITICAL] success-after-failures", output.ToString());
 	}
 
-	/** WHAT: a quiet log. WHY: exit code 0 and a clear "no attacks" line. */
+	/**
+	 * WHAT:   A quiet log.
+	 * WHY:    Exit code 0 and a clear "no attacks" line.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void ProgramExitCodeWhenQuiet()
 	{
@@ -202,7 +277,12 @@ public class PipelineTests
 		}
 	}
 
-	/** WHAT: --help and no arguments. WHY: both print the usage and succeed. */
+	/**
+	 * WHAT:   --help and no arguments.
+	 * WHY:    Both print the usage and succeed.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData("")]
 	[InlineData("--help")]

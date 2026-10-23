@@ -15,13 +15,28 @@ namespace LogonWatch.Cli;
  */
 internal static class Program
 {
-	/** <summary>WHAT: exit code when no alerts were found.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   Exit code when no alerts were found.
+	 * WHY:    0 means "all good" to every shell and scheduler.
+	 * </summary>
+	 */
 	public const int NoAlerts = 0;
 
-	/** <summary>WHAT: exit code when an input could not be read.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   Exit code when an input could not be read.
+	 * WHY:    Tells a script the check did not run, which is not the same as "no attacks".
+	 * </summary>
+	 */
 	public const int Error = 1;
 
-	/** <summary>WHAT: exit code for a bad command line.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   Exit code for a bad command line.
+	 * WHY:    The usual Unix convention for "you called it wrong".
+	 * </summary>
+	 */
 	public const int BadUsage = 2;
 
 	/**
@@ -36,6 +51,8 @@ internal static class Program
 	/**
 	 * <summary>
 	 * WHAT:   Starts the program.
+	 * WHY:    A thin wrapper so Run can be tested with fake output streams.
+	 * PRE:    none
 	 * RETURN: the exit code
 	 * </summary>
 	 * <param name="args">the command-line arguments</param>
@@ -48,6 +65,8 @@ internal static class Program
 	 * WHAT:   Parses the arguments, reads the events, detects attacks and prints the report.
 	 * WHY:    Nothing is written anywhere but output and error: logonwatch
 	 *         only reads logs, never changes or stores them.
+	 * PRE:    args, output and error are not null
+	 * POST:   the report or an error message has been written
 	 * RETURN: NoAlerts, AlertsFound, Error or BadUsage
 	 * </summary>
 	 * <param name="args">the command-line arguments</param>
@@ -57,6 +76,7 @@ internal static class Program
 	 */
 	public static int Run(string[] args, TextWriter output, TextWriter error)
 	{
+		// 1. parse the command line; help and version print and stop here
 		Options? options;
 		try
 		{
@@ -77,25 +97,30 @@ internal static class Program
 
 		try
 		{
+			// 2. read every event from the chosen input
 			ILogonEventSource source = CreateSource(options);
 			List<LogonEvent> events = source.Read().ToList();
 
-			// the demo is a fixed scenario from the past, so --since does not apply to it
+			// 3. --since: keep only recent events (the demo is a fixed scenario from the past, so it is exempt)
 			if (options.Since is not null && options.Input != InputKind.Demo)
 			{
 				DateTimeOffset cutoff = DateTimeOffset.UtcNow - options.Since.Value;
 				events = events.Where(e => e.Time >= cutoff).ToList();
 			}
+
+			// 4. --redact: hide names and addresses before any rule or report sees them
 			if (options.Redact)
 			{
 				Redactor redactor = new();
 				events = events.Select(redactor.Redact).ToList();
 			}
 
+			// 5. clean the events, run the rules, and build the report from the same cleaned events
 			List<LogonEvent> analysed = Detector.Prepare(events);
 			List<Alert> alerts = Detector.Run(analysed, options.Settings);
 			Report report = Report.Build(source.Description, analysed, alerts);
 
+			// 6. print it, and say through the exit code whether anything was found
 			if (options.Json)
 			{
 				ReportWriter.WriteJson(report, output);
@@ -118,8 +143,9 @@ internal static class Program
 	 * WHAT:   Creates the source the options ask for.
 	 * WHY:    The Windows event log API only exists on Windows; elsewhere
 	 *         --live and --file explain that instead of crashing.
-	 * THROWS: SourceException for --live or --file on another operating system
+	 * PRE:    options were checked by OptionsParser
 	 * RETURN: the source
+	 * THROWS: SourceException for --live or --file on another operating system
 	 * </summary>
 	 * <param name="options">the parsed options</param>
 	 * <returns>the source</returns>
@@ -127,6 +153,7 @@ internal static class Program
 	 */
 	private static ILogonEventSource CreateSource(Options options)
 	{
+		// the demo and JSON-lines work everywhere
 		switch (options.Input)
 		{
 			case InputKind.Demo:
@@ -135,6 +162,7 @@ internal static class Program
 				return JsonLinesSource.FromFile(options.Path!);
 		}
 
+		// --live and --file need the Windows event log API
 		if (!OperatingSystem.IsWindows())
 		{
 			throw new SourceException("--live and --file read Windows event logs and only work on Windows; "
@@ -147,7 +175,10 @@ internal static class Program
 	/**
 	 * <summary>
 	 * WHAT:   The program version from the project file.
-	 * RETURN: e.g. "1.0.0"
+	 * WHY:    --version reads it from the assembly, so it can never disagree
+	 *         with the build.
+	 * PRE:    none
+	 * RETURN: e.g. "1.0.0", without the "+commit" suffix .NET adds
 	 * </summary>
 	 * <returns>the version</returns>
 	 */

@@ -12,7 +12,12 @@ namespace LogonWatch.Tests;
  */
 public class InjectionTests
 {
-	/** WHAT: real payloads scanners send. WHY: each technique must be named correctly. */
+	/**
+	 * WHAT:   Real payloads scanners send.
+	 * WHY:    Each technique must be named correctly.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData("admin' OR '1'='1", "SQL injection")]
 	[InlineData("admin\" or 1=1--", "SQL injection")]
@@ -34,7 +39,12 @@ public class InjectionTests
 		Assert.Contains(category, InjectionAttemptRule.Categorize(user));
 	}
 
-	/** WHAT: real names with apostrophes, hyphens, dots, accents, e-mail form. WHY: false alarms would bury real attacks. */
+	/**
+	 * WHAT:   Real names with apostrophes, hyphens, dots, accents, e-mail form.
+	 * WHY:    False alarms would bury real attacks.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData("alice")]
 	[InlineData("O'Brien")]
@@ -50,7 +60,12 @@ public class InjectionTests
 		Assert.Empty(InjectionAttemptRule.Categorize(user));
 	}
 
-	/** WHAT: several payloads from one source. WHY: one alert per source listing every technique it tried. */
+	/**
+	 * WHAT:   Several payloads from one source.
+	 * WHY:    One alert per source listing every technique it tried.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void GroupsBySource()
 	{
@@ -71,7 +86,12 @@ public class InjectionTests
 		Assert.Contains("Log4Shell", first.Summary);
 	}
 
-	/** WHAT: a payload user name that logged on successfully. WHY: Windows should never accept that: Critical. */
+	/**
+	 * WHAT:   A payload user name that logged on successfully.
+	 * WHY:    Windows should never accept that: Critical.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void AcceptedPayloadIsCritical()
 	{
@@ -80,7 +100,12 @@ public class InjectionTests
 		Assert.Contains("investigate", alert.Summary);
 	}
 
-	/** WHAT: a payload with a line break and an escape code. WHY: printed raw, it could forge lines in this report. */
+	/**
+	 * WHAT:   A payload with a line break and an escape code.
+	 * WHY:    Printed raw, it could forge lines in this report.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void PayloadIsMadeSafeToPrint()
 	{
@@ -89,7 +114,12 @@ public class InjectionTests
 		Assert.Equal(43, InjectionAttemptRule.Shown(new string('x', 500)).Length);
 	}
 
-	/** WHAT: a crafted name of 200,000 characters. WHY: a backtracking regex could hang on this (ReDoS); this one must stay fast. */
+	/**
+	 * WHAT:   A crafted name of 200,000 characters.
+	 * WHY:    A backtracking regex could hang on this (ReDoS); this one must stay fast.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void LongCraftedNameIsFast()
 	{
@@ -99,7 +129,12 @@ public class InjectionTests
 		Assert.True(timer.Elapsed < TimeSpan.FromSeconds(2), $"took {timer.Elapsed}");
 	}
 
-	/** WHAT: --redact with a payload. WHY: payloads are not personal data and must stay visible, or the rule goes blind. */
+	/**
+	 * WHAT:   --redact with a payload.
+	 * WHY:    Payloads are not personal data and must stay visible, or the rule goes blind.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void RedactionKeepsPayloads()
 	{

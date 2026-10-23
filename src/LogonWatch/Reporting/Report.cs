@@ -5,7 +5,9 @@ namespace LogonWatch.Reporting;
 /**
  * <summary>
  * WHAT:   Everything one run found: what was read, and the alerts.
- * WHY:    The text and JSON writers print the same data, so it is built once.
+ * WHY:    The text and JSON writers print the same data, so it is built
+ *         once and both writers stay simple.
+ * PRE:    Events equals Failures plus Successes.
  * </summary>
  * <param name="Input">where the events came from</param>
  * <param name="Events">how many logon events were analysed</param>
@@ -22,12 +24,20 @@ public sealed record Report(
 	IReadOnlyList<SourceCount> TopSources,
 	IReadOnlyList<Alert> Alerts)
 {
-	/** <summary>WHAT: how many sources the "top sources" list shows.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   How many sources the "top sources" list shows.
+	 * WHY:    Five is enough to spot the noisiest addresses at a glance.
+	 * </summary>
+	 */
 	public const int TopSourceCount = 5;
 
 	/**
 	 * <summary>
 	 * WHAT:   Builds a report from the analysed events and the alerts.
+	 * WHY:    Counting in one place keeps the numbers in the text and JSON
+	 *         reports identical.
+	 * PRE:    events are the events the alerts were found in
 	 * RETURN: the report
 	 * </summary>
 	 * <param name="input">where the events came from</param>
@@ -37,6 +47,7 @@ public sealed record Report(
 	 */
 	public static Report Build(string input, IReadOnlyList<LogonEvent> events, IReadOnlyList<Alert> alerts)
 	{
+		// failures per source, most first; ties sorted by address so the order never changes between runs
 		List<SourceCount> top = events.Where(e => e.IsFailure)
 			.GroupBy(e => e.Source, StringComparer.OrdinalIgnoreCase)
 			.Select(group => new SourceCount(group.Key, group.Count()))
@@ -52,6 +63,7 @@ public sealed record Report(
 /**
  * <summary>
  * WHAT:   One row of the "top sources" list.
+ * WHY:    A named record serialises to readable JSON ({"source": ..., "failures": ...}).
  * </summary>
  * <param name="Source">the source address, or "-" for local</param>
  * <param name="Failures">failed logons from it</param>

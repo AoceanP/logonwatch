@@ -11,7 +11,14 @@ namespace LogonWatch.Detection;
  */
 public sealed class BruteForceRule : IDetectionRule
 {
-	/** <inheritdoc /> */
+	/**
+	 * <summary>
+	 * WHAT:   The rule's name in alerts: "brute-force".
+	 * WHY:    Identifies the rule in reports and JSON.
+	 * PRE:    none
+	 * RETURN: "brute-force"
+	 * </summary>
+	 */
 	public string Name => "brute-force";
 
 	/**
@@ -21,6 +28,7 @@ public sealed class BruteForceRule : IDetectionRule
 	 * WHY:    Severity grows with size: local bursts are Low (a person
 	 *         mistyping), remote ones Medium, and five times the threshold High.
 	 * PRE:    events are sorted by time
+	 * POST:   events are not changed
 	 * RETURN: one alert per burst
 	 * </summary>
 	 * <param name="events">the logon events</param>
@@ -29,13 +37,17 @@ public sealed class BruteForceRule : IDetectionRule
 	 */
 	public IEnumerable<Alert> Evaluate(IReadOnlyList<LogonEvent> events, DetectionSettings settings)
 	{
+		// 1. one group of failures per source address ("203.0.113.7", or "-" for local)
 		foreach (IGrouping<string, LogonEvent> group in events.Where(e => e.IsFailure)
 			.GroupBy(e => e.Source, StringComparer.OrdinalIgnoreCase))
 		{
 			List<LogonEvent> failures = group.ToList();
+
+			// 2. slide a window over that source's failures; count events, not distinct values
 			foreach (List<LogonEvent> burst in Bursts.Find(failures, e => e.Time, settings.BruteForceWindow,
 				settings.BruteForceThreshold))
 			{
+				// 3. rate the burst: typed locally, normal, or five times the threshold
 				List<string> accounts = RuleText.Accounts(burst);
 				Severity severity = burst[0].IsLocal ? Severity.Low
 					: burst.Count >= settings.BruteForceThreshold * 5 ? Severity.High

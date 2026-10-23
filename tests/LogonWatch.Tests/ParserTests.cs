@@ -10,7 +10,12 @@ namespace LogonWatch.Tests;
  */
 public class ParserTests
 {
-	/** WHAT: a real 4625. WHY: every field the rules use must come out right. */
+	/**
+	 * WHAT:   A real 4625.
+	 * WHY:    Every field the rules use must come out right.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void ParsesFailedLogon()
 	{
@@ -26,7 +31,12 @@ public class ParserTests
 		Assert.Equal(new DateTimeOffset(2026, 10, 21, 10, 1, 3, TimeSpan.Zero), logon.Time.AddTicks(-1234567));
 	}
 
-	/** WHAT: a 4624. WHY: successes are what the most important rule looks for. */
+	/**
+	 * WHAT:   A 4624.
+	 * WHY:    Successes are what the most important rule looks for.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void ParsesSuccessfulLogon()
 	{
@@ -37,7 +47,12 @@ public class ParserTests
 		Assert.Equal("", logon.Reason);
 	}
 
-	/** WHAT: SubStatus codes. WHY: "user does not exist" in bulk points to username guessing. */
+	/**
+	 * WHAT:   SubStatus codes.
+	 * WHY:    "user does not exist" in bulk points to username guessing.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData("0xc0000064", "user does not exist")]
 	[InlineData("0xC000006A", "wrong password")]
@@ -49,14 +64,24 @@ public class ParserTests
 		Assert.Equal(expected, SecurityEventParser.Parse(TestData.FailureXml(subStatus: subStatus))?.Reason);
 	}
 
-	/** WHAT: SubStatus 0x0. WHY: Windows then puts the reason in Status instead. */
+	/**
+	 * WHAT:   SubStatus 0x0.
+	 * WHY:    Windows then puts the reason in Status instead.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void FallsBackToStatus()
 	{
 		Assert.Equal("bad user name or password", SecurityEventParser.Parse(TestData.FailureXml(subStatus: "0x0"))?.Reason);
 	}
 
-	/** WHAT: other event IDs. WHY: only 4624 and 4625 are logons. */
+	/**
+	 * WHAT:   Other event IDs.
+	 * WHY:    Only 4624 and 4625 are logons.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData("4634")]
 	[InlineData("4672")]
@@ -66,14 +91,24 @@ public class ParserTests
 		Assert.Null(SecurityEventParser.Parse(TestData.FailureXml(eventId: eventId)));
 	}
 
-	/** WHAT: a 4625 from another provider. WHY: any program can write fake 4625s; only Windows auditing is trusted. */
+	/**
+	 * WHAT:   A 4625 from another provider.
+	 * WHY:    Any program can write fake 4625s; only Windows auditing is trusted.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void IgnoresForgedProvider()
 	{
 		Assert.Null(SecurityEventParser.Parse(TestData.FailureXml(provider: "EvilApp")));
 	}
 
-	/** WHAT: IPv4 written as IPv6. WHY: "::ffff:203.0.113.7" and "203.0.113.7" are the same attacker. */
+	/**
+	 * WHAT:   IPv4 written as IPv6.
+	 * WHY:    "::ffff:203.0.113.7" and "203.0.113.7" are the same attacker.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void NormalizesIpv4MappedAddresses()
 	{
@@ -82,7 +117,12 @@ public class ParserTests
 		Assert.Equal("-", SecurityEventParser.NormalizeAddress("   "));
 	}
 
-	/** WHAT: a logon with no IP address. WHY: keyboard logons have IpAddress "-" and count as local. */
+	/**
+	 * WHAT:   A logon with no IP address.
+	 * WHY:    Keyboard logons have IpAddress "-" and count as local.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void LocalLogonHasNoAddress()
 	{
@@ -91,7 +131,12 @@ public class ParserTests
 		Assert.True(logon.IsLocal);
 	}
 
-	/** WHAT: broken or empty XML. WHY: one bad record must not stop a scan of the whole log. */
+	/**
+	 * WHAT:   Broken or empty XML.
+	 * WHY:    One bad record must not stop a scan of the whole log.
+	 * PRE:    the parameters come from the InlineData rows below
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Theory]
 	[InlineData("")]
 	[InlineData("not xml")]
@@ -102,7 +147,12 @@ public class ParserTests
 		Assert.Null(SecurityEventParser.Parse(xml));
 	}
 
-	/** WHAT: an event without a target user. WHY: nothing can be attributed to it. */
+	/**
+	 * WHAT:   An event without a target user.
+	 * WHY:    Nothing can be attributed to it.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void IgnoresEventWithoutUser()
 	{

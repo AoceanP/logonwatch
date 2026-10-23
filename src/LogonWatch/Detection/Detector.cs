@@ -26,6 +26,9 @@ public static class Detector
 	/**
 	 * <summary>
 	 * WHAT:   The rules, most important first.
+	 * WHY:    A new rule only needs to be added to this list.
+	 * PRE:    none
+	 * RETURN: the five rules
 	 * </summary>
 	 */
 	public static IReadOnlyList<IDetectionRule> Rules { get; } =
@@ -42,8 +45,10 @@ public static class Detector
 	 * WHAT:   Cleans the events, runs every rule, and sorts the alerts.
 	 * WHY:    Rules expect sorted events; logs and files are not always in
 	 *         order (e.g. several exported logs combined).
-	 * THROWS: ArgumentException if the settings are invalid
+	 * PRE:    events and settings are not null
+	 * POST:   events is not changed
 	 * RETURN: the alerts, most severe first, then oldest first
+	 * THROWS: ArgumentException if the settings are invalid
 	 * </summary>
 	 * <param name="events">the logon events, in any order</param>
 	 * <param name="settings">the thresholds and windows</param>
@@ -52,8 +57,13 @@ public static class Detector
 	 */
 	public static List<Alert> Run(IEnumerable<LogonEvent> events, DetectionSettings settings)
 	{
+		// 1. refuse impossible settings before doing any work
 		settings.Validate();
+
+		// 2. drop noise and sort once, so every rule gets the same clean input
 		List<LogonEvent> prepared = Prepare(events);
+
+		// 3. run each rule and merge their alerts: most severe first, then oldest first
 		return Rules.SelectMany(rule => rule.Evaluate(prepared, settings))
 			.OrderByDescending(alert => alert.Severity)
 			.ThenBy(alert => alert.First)
@@ -66,6 +76,8 @@ public static class Detector
 	 * WHY:    Computer accounts end in "$" and log on all day across a
 	 *         domain; logon types 0 (system) and 5 (service) are Windows
 	 *         itself. The sort is stable, so equal times keep their order.
+	 * PRE:    events is not null
+	 * POST:   events is not changed; a new list is returned
 	 * RETURN: the cleaned, sorted events
 	 * </summary>
 	 * <param name="events">the raw events</param>

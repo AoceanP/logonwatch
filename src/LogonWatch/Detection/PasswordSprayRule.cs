@@ -13,7 +13,14 @@ namespace LogonWatch.Detection;
  */
 public sealed class PasswordSprayRule : IDetectionRule
 {
-	/** <inheritdoc /> */
+	/**
+	 * <summary>
+	 * WHAT:   The rule's name in alerts: "password-spray".
+	 * WHY:    Identifies the rule in reports and JSON.
+	 * PRE:    none
+	 * RETURN: "password-spray"
+	 * </summary>
+	 */
 	public string Name => "password-spray";
 
 	/**
@@ -23,6 +30,7 @@ public sealed class PasswordSprayRule : IDetectionRule
 	 * WHY:    Distinct accounts, not attempts, are counted, so one user
 	 *         mistyping 20 times never triggers it.
 	 * PRE:    events are sorted by time
+	 * POST:   events are not changed
 	 * RETURN: one alert per burst
 	 * </summary>
 	 * <param name="events">the logon events</param>
@@ -31,13 +39,17 @@ public sealed class PasswordSprayRule : IDetectionRule
 	 */
 	public IEnumerable<Alert> Evaluate(IReadOnlyList<LogonEvent> events, DetectionSettings settings)
 	{
+		// 1. one group of failures per source address
 		foreach (IGrouping<string, LogonEvent> group in events.Where(e => e.IsFailure)
 			.GroupBy(e => e.Source, StringComparer.OrdinalIgnoreCase))
 		{
 			List<LogonEvent> failures = group.ToList();
+
+			// 2. slide a window over them, counting distinct account names (e => e.User)
 			foreach (List<LogonEvent> burst in Bursts.Find(failures, e => e.Time, settings.SprayWindow,
 				settings.SprayAccountThreshold, e => e.User))
 			{
+				// 3. spraying is deliberate, so it is High unless typed at the machine itself
 				List<string> accounts = RuleText.Accounts(burst);
 				Severity severity = burst[0].IsLocal ? Severity.Low : Severity.High;
 

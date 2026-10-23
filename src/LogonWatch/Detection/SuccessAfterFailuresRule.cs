@@ -12,7 +12,14 @@ namespace LogonWatch.Detection;
  */
 public sealed class SuccessAfterFailuresRule : IDetectionRule
 {
-	/** <inheritdoc /> */
+	/**
+	 * <summary>
+	 * WHAT:   The rule's name in alerts: "success-after-failures".
+	 * WHY:    Identifies the rule in reports and JSON.
+	 * PRE:    none
+	 * RETURN: "success-after-failures"
+	 * </summary>
+	 */
 	public string Name => "success-after-failures";
 
 	/**
@@ -25,6 +32,7 @@ public sealed class SuccessAfterFailuresRule : IDetectionRule
 	 *         same source and account are not reported again within the
 	 *         window, so one break-in gives one alert.
 	 * PRE:    events are sorted by time
+	 * POST:   events are not changed
 	 * RETURN: one alert per suspicious success
 	 * </summary>
 	 * <param name="events">the logon events</param>
@@ -33,11 +41,15 @@ public sealed class SuccessAfterFailuresRule : IDetectionRule
 	 */
 	public IEnumerable<Alert> Evaluate(IReadOnlyList<LogonEvent> events, DetectionSettings settings)
 	{
+		// failures stay sorted by time, which the binary search below relies on
 		List<LogonEvent> failures = events.Where(e => e.IsFailure).ToList();
+
+		// "source|user" -> time of the last alert, so one break-in is reported once
 		Dictionary<string, DateTimeOffset> lastAlert = new(StringComparer.OrdinalIgnoreCase);
 
 		foreach (LogonEvent success in events.Where(e => !e.IsFailure))
 		{
+			// 1. skip successes that belong to a break-in already reported
 			string key = success.Source + "|" + success.User;
 			if (lastAlert.TryGetValue(key, out DateTimeOffset previous)
 				&& success.Time - previous <= settings.SuccessAfterFailuresWindow)
@@ -45,7 +57,8 @@ public sealed class SuccessAfterFailuresRule : IDetectionRule
 				continue;
 			}
 
-			// jump straight to the first failure inside the window instead of scanning the whole log
+			// 2. jump straight to the first failure inside the window instead of scanning the whole log,
+			//    then walk forward to the success, keeping failures from the same source or account
 			DateTimeOffset from = success.Time - settings.SuccessAfterFailuresWindow;
 			List<LogonEvent> related = [];
 			for (int i = FirstAtOrAfter(failures, from); i < failures.Count && failures[i].Time <= success.Time; i++)
@@ -57,11 +70,14 @@ public sealed class SuccessAfterFailuresRule : IDetectionRule
 					related.Add(failure);
 				}
 			}
+
+			// 3. too few failures before it: an ordinary logon
 			if (related.Count < settings.SuccessAfterFailuresThreshold)
 			{
 				continue;
 			}
 
+			// 4. report it and remember it, so later successes of the same break-in are skipped
 			lastAlert[key] = success.Time;
 			Severity severity = success.IsLocal ? Severity.High : Severity.Critical;
 			yield return new Alert(Name, severity, success.Source, [success.User], related.Count, related[0].Time,
@@ -75,7 +91,8 @@ public sealed class SuccessAfterFailuresRule : IDetectionRule
 	 * <summary>
 	 * WHAT:   Binary search for the first failure at or after a time.
 	 * WHY:    Scanning every failure for every success was quadratic: on a
-	 *         log of 100,000 events it took over half a minute.
+	 *         log of 100,000 events it took over half a minute. Halving the
+	 *         search range each step needs only about 17 steps for 100,000.
 	 * PRE:    failures is sorted by time
 	 * RETURN: the index, or failures.Count if every failure is earlier
 	 * </summary>
@@ -85,18 +102,19 @@ public sealed class SuccessAfterFailuresRule : IDetectionRule
 	 */
 	private static int FirstAtOrAfter(List<LogonEvent> failures, DateTimeOffset time)
 	{
+		// the answer is always inside [low, high); each step throws away half of that range
 		int low = 0;
 		int high = failures.Count;
 		while (low < high)
 		{
-			int middle = low + (high - low) / 2;
+			int middle = low + (high - low) / 2; // written this way so low + high cannot overflow
 			if (failures[middle].Time < time)
 			{
-				low = middle + 1;
+				low = middle + 1; // middle is too early, so the answer is to its right
 			}
 			else
 			{
-				high = middle;
+				high = middle; // middle might be the answer, so keep it in the range
 			}
 		}
 		return low;

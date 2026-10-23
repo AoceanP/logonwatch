@@ -17,7 +17,12 @@ namespace LogonWatch.Detection;
  */
 public sealed class InjectionAttemptRule : IDetectionRule
 {
-	/** <summary>WHAT: how long a payload may be in the alert text before it is cut.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   How long a payload may be in the alert text before it is cut.
+	 * WHY:    One enormous user name must not flood the report.
+	 * </summary>
+	 */
 	private const int ShownLength = 40;
 
 	/**
@@ -32,20 +37,38 @@ public sealed class InjectionAttemptRule : IDetectionRule
 	 */
 	private static readonly (string Category, Regex Pattern)[] Patterns =
 	[
+		// a quote that closes the SQL string, then OR/AND and a comparison: admin' OR '1'='1
 		("SQL injection", Create(@"['""]\s*(or|and)\s+\S+\s*=")),
+		// a quote followed by a comment or a new statement: admin'-- or x'; DROP TABLE
 		("SQL injection", Create(@"['""]\s*(--|#|/\*|;)")),
+		// pulling data from another table: ' UNION SELECT password FROM users
 		("SQL injection", Create(@"\bunion\b.*\bselect\b")),
+		// SQL Server and MySQL tricks: running commands, reading the schema, timing attacks
 		("SQL injection", Create(@"\b(xp_cmdshell|information_schema|waitfor\s+delay)\b|\b(sleep|benchmark)\s*\(")),
+		// a shell separator followed by a common command: ; whoami, && powershell, | nc
 		("command injection", Create(@"(;|&&|\|\|?)\s*(whoami|id|ls|dir|cat|type|ping|nslookup|curl|wget|powershell|cmd|bash|sh|nc|net)\b")),
+		// shell command substitution: $(curl ...) or `id`
 		("command injection", Create(@"\$\([^)]*\)|`[^`]*`")),
+		// Log4Shell: ${jndi:ldap://...}, including disguised forms such as ${${lower:j}ndi:...}
 		("Log4Shell (JNDI lookup)", Create(@"\$\{[^}]*(jndi|ldap|rmi|env:|sys:|lower:|upper:)")),
+		// HTML or JavaScript meant for a web page that later shows the name
 		("script injection", Create(@"<\s*/?\s*(script|img|svg|iframe|body)\b|javascript:|\bon(error|load)\s*=")),
+		// climbing out of a folder: ..\..\windows or ../../etc
 		("path traversal", Create(@"\.\.[/\\]")),
+		// C printf placeholders that read or write memory: %s%s%n
 		("format string", Create(@"(%[0-9]*[snx]){2,}")),
+		// line breaks, tabs, escape codes: used to forge or hide lines in logs
 		("control characters", Create(@"[\x00-\x1F\x7F]")),
 	];
 
-	/** <inheritdoc /> */
+	/**
+	 * <summary>
+	 * WHAT:   The rule's name in alerts: "injection-attempt".
+	 * WHY:    Identifies the rule in reports and JSON.
+	 * PRE:    none
+	 * RETURN: "injection-attempt"
+	 * </summary>
+	 */
 	public string Name => "injection-attempt";
 
 	/**
@@ -56,6 +79,7 @@ public sealed class InjectionAttemptRule : IDetectionRule
 	 *         is High, or Critical if such a logon succeeded: Windows should
 	 *         never accept a user name like that.
 	 * PRE:    events are sorted by time
+	 * POST:   events are not changed
 	 * RETURN: one alert per source that sent payloads
 	 * </summary>
 	 * <param name="events">the logon events</param>
@@ -64,13 +88,16 @@ public sealed class InjectionAttemptRule : IDetectionRule
 	 */
 	public IEnumerable<Alert> Evaluate(IReadOnlyList<LogonEvent> events, DetectionSettings settings)
 	{
+		// 1. check every logon's user name, keeping only those that match at least one category
 		var matches = events
 			.Select(logon => (Logon: logon, Categories: Categorize(logon.User)))
 			.Where(match => match.Categories.Count > 0)
+			// 2. one group per attacking source
 			.GroupBy(match => match.Logon.Source, StringComparer.OrdinalIgnoreCase);
 
 		foreach (var group in matches)
 		{
+			// 3. summarise the group: which techniques, which payloads (made safe), and whether any got in
 			var attempts = group.ToList();
 			List<string> categories = attempts.SelectMany(match => match.Categories).Distinct().ToList();
 			List<string> payloads = attempts.Select(match => Shown(match.Logon.User)).Distinct().ToList();
@@ -87,8 +114,9 @@ public sealed class InjectionAttemptRule : IDetectionRule
 	/**
 	 * <summary>
 	 * WHAT:   Lists the payload categories a user name matches.
-	 * WHY:    Public so it can be tested on its own, and reused by other
-	 *         tools that need to check a name.
+	 * WHY:    Public so it can be tested on its own, and reused by the
+	 *         Redactor to keep payloads visible.
+	 * PRE:    user is not null
 	 * RETURN: the categories, without duplicates; empty for a normal name
 	 * </summary>
 	 * <param name="user">the user name</param>
@@ -103,7 +131,8 @@ public sealed class InjectionAttemptRule : IDetectionRule
 	 *         escapes like \n, and long payloads are cut.
 	 * WHY:    The payload is attacker-controlled; printed raw, a line break
 	 *         or terminal escape code in it could forge or hide report lines.
-	 * RETURN: the printable payload
+	 * PRE:    payload is not null
+	 * RETURN: the printable payload, at most ShownLength characters plus "..."
 	 * </summary>
 	 * <param name="payload">the raw user name</param>
 	 * <returns>the safe text</returns>
@@ -113,6 +142,7 @@ public sealed class InjectionAttemptRule : IDetectionRule
 		StringBuilder text = new();
 		foreach (char c in payload)
 		{
+			// replace each invisible character with a visible escape; keep everything else as it is
 			text.Append(c switch
 			{
 				'\n' => "\\n",
@@ -121,6 +151,8 @@ public sealed class InjectionAttemptRule : IDetectionRule
 				_ when char.IsControl(c) => $"\\x{(int)c:x2}",
 				_ => c.ToString(),
 			});
+
+			// stop as soon as the text is long enough, so a huge payload is never fully copied
 			if (text.Length >= ShownLength)
 			{
 				return text.ToString(0, ShownLength) + "...";
@@ -132,6 +164,8 @@ public sealed class InjectionAttemptRule : IDetectionRule
 	/**
 	 * <summary>
 	 * WHAT:   Puts quotes around a payload for the alert sentence.
+	 * WHY:    Shows exactly where a payload starts and ends, including spaces.
+	 * PRE:    payload is already made safe by Shown
 	 * RETURN: the quoted text
 	 * </summary>
 	 * <param name="payload">the safe payload text</param>
@@ -142,6 +176,9 @@ public sealed class InjectionAttemptRule : IDetectionRule
 	/**
 	 * <summary>
 	 * WHAT:   Builds one case-insensitive, non-backtracking pattern.
+	 * WHY:    Every pattern gets the same safe options in one place.
+	 * PRE:    pattern is a valid regex without lookarounds or backreferences
+	 *         (NonBacktracking does not support them)
 	 * RETURN: the compiled regex
 	 * </summary>
 	 * <param name="pattern">the regular expression</param>

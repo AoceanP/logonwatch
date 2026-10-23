@@ -6,15 +6,23 @@ namespace LogonWatch.Tests;
  * WHAT:   Builders for test events and real Windows event XML.
  * WHY:    Tests read like the attack they describe ("60 failures from
  *         203.0.113.7") instead of walls of constructor arguments. Every
- *         address is from the documentation ranges (RFC 5737).
+ *         address is from the documentation ranges (RFC 5737), so all test
+ *         data is fake.
  */
 internal static class TestData
 {
-	/** WHAT: a fixed start time, so tests never depend on the clock. */
+	/**
+	 * WHAT:   A fixed start time: 2026-10-21 10:00:00 UTC.
+	 * WHY:    Tests never depend on the clock, so they give the same result
+	 *         every time they run.
+	 */
 	public static readonly DateTimeOffset Start = new(2026, 10, 21, 10, 0, 0, TimeSpan.Zero);
 
 	/**
-	 * WHAT:   A failed network logon, seconds after Start.
+	 * WHAT:   A failed network logon, a number of seconds after Start.
+	 * WHY:    The most common event in every test; defaults describe a
+	 *         typical attack on "administrator" from 203.0.113.7.
+	 * PRE:    seconds is zero or more
 	 * RETURN: the event
 	 */
 	public static LogonEvent Failure(double seconds, string user = "administrator", string source = "203.0.113.7",
@@ -22,7 +30,9 @@ internal static class TestData
 		new(Start.AddSeconds(seconds), LogonOutcome.Failure, user, "WORKSTATION", source, logonType, "wrong password");
 
 	/**
-	 * WHAT:   A successful network logon, seconds after Start.
+	 * WHAT:   A successful network logon, a number of seconds after Start.
+	 * WHY:    Used to finish an attack ("and then it worked") or as normal activity.
+	 * PRE:    seconds is zero or more
 	 * RETURN: the event
 	 */
 	public static LogonEvent Success(double seconds, string user = "administrator", string source = "203.0.113.7",
@@ -30,8 +40,11 @@ internal static class TestData
 		new(Start.AddSeconds(seconds), LogonOutcome.Success, user, "WORKSTATION", source, logonType, "");
 
 	/**
-	 * WHAT:   count failures from one source, spacing seconds apart, starting at first.
-	 * RETURN: the events
+	 * WHAT:   A run of failures from one source, evenly spaced.
+	 * WHY:    "10 failures, 30 seconds apart" is one line instead of ten.
+	 * PRE:    count is zero or more; spacing and first are zero or more
+	 * RETURN: count failures, the first at `first` seconds, then every
+	 *         `spacing` seconds
 	 */
 	public static List<LogonEvent> Failures(int count, double spacing, double first = 0, string user = "administrator",
 		string source = "203.0.113.7") =>
@@ -40,7 +53,9 @@ internal static class TestData
 	/**
 	 * WHAT:   A real event 4625, in the exact XML layout Windows produces.
 	 * WHY:    The parser is tested against what EventRecord.ToXml() returns,
-	 *         including the namespace and the Data elements Windows writes.
+	 *         including the namespace and the Data elements Windows writes;
+	 *         each argument changes one field to build a variation.
+	 * PRE:    none
 	 * RETURN: the XML
 	 */
 	public static string FailureXml(string user = "administrator", string ip = "203.0.113.7",

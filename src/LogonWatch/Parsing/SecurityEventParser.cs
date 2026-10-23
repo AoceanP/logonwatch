@@ -15,7 +15,13 @@ namespace LogonWatch.Parsing;
  */
 public static class SecurityEventParser
 {
-	/** <summary>WHAT: the XML namespace every Windows event uses.</summary> */
+	/**
+	 * <summary>
+	 * WHAT:   The XML namespace every Windows event uses.
+	 * WHY:    Element names in the event XML only match when this namespace
+	 *         is added, e.g. EventNamespace + "System".
+	 * </summary>
+	 */
 	private static readonly XNamespace EventNamespace = "http://schemas.microsoft.com/win/2004/08/events/event";
 
 	/**
@@ -32,7 +38,8 @@ public static class SecurityEventParser
 	 * <summary>
 	 * WHAT:   Readable reasons for the NTSTATUS codes in a failed logon.
 	 * WHY:    "user does not exist" in bulk is the sign of password spraying
-	 *         or username guessing; "wrong password" of brute force.
+	 *         or username guessing; "wrong password" of brute force. The keys
+	 *         ignore case because Windows writes both 0xC000006A and 0xc000006a.
 	 * </summary>
 	 */
 	private static readonly Dictionary<string, string> FailureReasons = new(StringComparer.OrdinalIgnoreCase)
@@ -57,14 +64,17 @@ public static class SecurityEventParser
 	 *         genuine logon event, so one odd record never stops a scan of a
 	 *         whole log.
 	 * PRE:    xml is the text of one event, as from EventRecord.ToXml()
+	 * POST:   nothing is changed; the parser has no state
 	 * RETURN: the logon event, or null if the XML is malformed, from another
 	 *         provider, another event ID, or missing its time or user
+	 * THROWS: nothing
 	 * </summary>
 	 * <param name="xml">the event XML</param>
 	 * <returns>the parsed event, or null</returns>
 	 */
 	public static LogonEvent? Parse(string xml)
 	{
+		// 1. Load the XML. Broken XML means it is not an event at all.
 		XDocument document;
 		try
 		{
@@ -75,6 +85,7 @@ public static class SecurityEventParser
 			return null;
 		}
 
+		// 2. Every event has a <System> block with who wrote it, its ID and its time.
 		XElement? system = document.Root?.Element(EventNamespace + "System");
 		if (system is null)
 		{
@@ -84,11 +95,14 @@ public static class SecurityEventParser
 		string? provider = system.Element(EventNamespace + "Provider")?.Attribute("Name")?.Value;
 		string? eventId = system.Element(EventNamespace + "EventID")?.Value;
 		string? systemTime = system.Element(EventNamespace + "TimeCreated")?.Attribute("SystemTime")?.Value;
+
+		// 3. Trust only Windows' own auditing provider, so a forged "4625" is ignored.
 		if (provider != AuditingProvider || systemTime is null)
 		{
 			return null;
 		}
 
+		// 4. Only logon events matter: 4624 worked, 4625 failed. Everything else is skipped.
 		LogonOutcome outcome;
 		switch (eventId)
 		{
@@ -97,13 +111,15 @@ public static class SecurityEventParser
 			default: return null;
 		}
 
+		// 5. SystemTime is ISO 8601 in UTC, e.g. 2026-10-21T10:01:03.1234567Z.
 		if (!DateTimeOffset.TryParse(systemTime, CultureInfo.InvariantCulture,
 			DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTimeOffset time))
 		{
 			return null;
 		}
 
-		// EventData holds <Data Name="TargetUserName">admin</Data> and so on
+		// 6. <EventData> holds named fields: <Data Name="TargetUserName">admin</Data> and so on.
+		//    Collect them into a dictionary so each field can be looked up by name.
 		Dictionary<string, string> data = new(StringComparer.Ordinal);
 		foreach (XElement item in document.Root!.Element(EventNamespace + "EventData")?.Elements(EventNamespace + "Data") ?? [])
 		{
@@ -114,12 +130,14 @@ public static class SecurityEventParser
 			}
 		}
 
+		// 7. An event that names no account cannot be attributed to anyone.
 		string user = data.GetValueOrDefault("TargetUserName", "");
 		if (user.Length == 0 || user == "-")
 		{
 			return null;
 		}
 
+		// 8. Build the event; a missing or unreadable logon type becomes 0 (unknown).
 		int logonType = int.TryParse(data.GetValueOrDefault("LogonType"), out int type) ? type : 0;
 		string reason = outcome == LogonOutcome.Failure ? DescribeFailure(data) : "";
 
@@ -132,6 +150,7 @@ public static class SecurityEventParser
 	 * WHAT:   Cleans up the IpAddress field.
 	 * WHY:    Windows writes IPv4 clients of an IPv6 socket as "::ffff:1.2.3.4";
 	 *         without this, one attacker would look like two different sources.
+	 * PRE:    address is not null
 	 * RETURN: the plain address, or "-" when there is none
 	 * </summary>
 	 * <param name="address">the raw IpAddress value</param>
@@ -144,6 +163,8 @@ public static class SecurityEventParser
 		{
 			return "-";
 		}
+
+		// "::ffff:" followed by a dotted IPv4 address is an IPv4-mapped IPv6 address: keep the IPv4 part
 		if (trimmed.StartsWith("::ffff:", StringComparison.OrdinalIgnoreCase) && trimmed.Contains('.'))
 		{
 			return trimmed["::ffff:".Length..];
@@ -155,8 +176,10 @@ public static class SecurityEventParser
 	 * <summary>
 	 * WHAT:   Turns a failure's status codes into words.
 	 * WHY:    SubStatus is the precise reason; Status is the fallback when
-	 *         SubStatus is 0x0.
-	 * RETURN: the readable reason, or the raw code if it is not known
+	 *         SubStatus is 0x0 (Windows leaves it empty for some failures).
+	 * PRE:    data holds the event's named fields
+	 * RETURN: the readable reason, the raw code if it is not known, or
+	 *         "unknown" if there is no code at all
 	 * </summary>
 	 * <param name="data">the event's named data fields</param>
 	 * <returns>the reason text</returns>

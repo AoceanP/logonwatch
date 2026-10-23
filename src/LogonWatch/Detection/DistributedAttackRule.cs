@@ -12,7 +12,14 @@ namespace LogonWatch.Detection;
  */
 public sealed class DistributedAttackRule : IDetectionRule
 {
-	/** <inheritdoc /> */
+	/**
+	 * <summary>
+	 * WHAT:   The rule's name in alerts: "distributed-attack".
+	 * WHY:    Identifies the rule in reports and JSON.
+	 * PRE:    none
+	 * RETURN: "distributed-attack"
+	 * </summary>
+	 */
 	public string Name => "distributed-attack";
 
 	/**
@@ -20,8 +27,10 @@ public sealed class DistributedAttackRule : IDetectionRule
 	 * WHAT:   Finds bursts where one account fails from at least
 	 *         DistributedSourceThreshold different remote sources within
 	 *         DistributedWindow.
-	 * WHY:    Local failures are left out: they all share the source "-".
+	 * WHY:    Local failures are left out: they all share the source "-",
+	 *         so they could never look distributed anyway.
 	 * PRE:    events are sorted by time
+	 * POST:   events are not changed
 	 * RETURN: one alert per burst, with Source set to "N sources"
 	 * </summary>
 	 * <param name="events">the logon events</param>
@@ -30,10 +39,13 @@ public sealed class DistributedAttackRule : IDetectionRule
 	 */
 	public IEnumerable<Alert> Evaluate(IReadOnlyList<LogonEvent> events, DetectionSettings settings)
 	{
+		// 1. the mirror image of brute force: one group per account, not per source
 		foreach (IGrouping<string, LogonEvent> group in events.Where(e => e.IsFailure && !e.IsLocal)
 			.GroupBy(e => e.User, StringComparer.OrdinalIgnoreCase))
 		{
 			List<LogonEvent> failures = group.ToList();
+
+			// 2. slide a window over the account's failures, counting distinct sources (e => e.Source)
 			foreach (List<LogonEvent> burst in Bursts.Find(failures, e => e.Time, settings.DistributedWindow,
 				settings.DistributedSourceThreshold, e => e.Source))
 			{
@@ -49,7 +61,9 @@ public sealed class DistributedAttackRule : IDetectionRule
 	/**
 	 * <summary>
 	 * WHAT:   Counts the different source addresses in some events.
-	 * RETURN: the number of distinct sources
+	 * WHY:    The alert says how many addresses took part in the whole burst.
+	 * PRE:    events is not null
+	 * RETURN: the number of distinct sources, ignoring case
 	 * </summary>
 	 * <param name="events">the events</param>
 	 * <returns>the count</returns>

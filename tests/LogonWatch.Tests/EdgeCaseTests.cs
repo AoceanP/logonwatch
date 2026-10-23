@@ -11,10 +11,18 @@ namespace LogonWatch.Tests;
  */
 public class EdgeCaseTests
 {
-	/** WHAT: default settings. */
+	/**
+	 * WHAT:   The default settings, shared by every test in this class.
+	 * WHY:    Edge cases are checked against the same thresholds a real run uses.
+	 */
 	private static readonly DetectionSettings Settings = new();
 
-	/** WHAT: 10 failures exactly 5:00 apart first to last. WHY: the window is inclusive. */
+	/**
+	 * WHAT:   10 failures exactly 5:00 apart first to last.
+	 * WHY:    The window is inclusive.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void WindowBoundaryIsInclusive()
 	{
@@ -22,7 +30,12 @@ public class EdgeCaseTests
 		Assert.Single(new BruteForceRule().Evaluate(Detector.Prepare(events), Settings));
 	}
 
-	/** WHAT: the same 10 failures one second wider. WHY: just outside the window must not fire. */
+	/**
+	 * WHAT:   The same 10 failures one second wider.
+	 * WHY:    Just outside the window must not fire.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void WindowBoundaryPlusOneSecond()
 	{
@@ -31,7 +44,12 @@ public class EdgeCaseTests
 		Assert.Empty(new BruteForceRule().Evaluate(Detector.Prepare(events), Settings));
 	}
 
-	/** WHAT: 10 failures with the same timestamp. WHY: logs record to the millisecond; bursts can share one. */
+	/**
+	 * WHAT:   10 failures with the same timestamp.
+	 * WHY:    Logs record to the millisecond; bursts can share one.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void IdenticalTimestamps()
 	{
@@ -39,21 +57,36 @@ public class EdgeCaseTests
 		Assert.Equal(10, Assert.Single(new BruteForceRule().Evaluate(Detector.Prepare(events), Settings)).Attempts);
 	}
 
-	/** WHAT: no events at all. WHY: an empty log is normal and must give no alerts, not an error. */
+	/**
+	 * WHAT:   No events at all.
+	 * WHY:    An empty log is normal and must give no alerts, not an error.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void EmptyInput()
 	{
 		Assert.Empty(Detector.Run([], Settings));
 	}
 
-	/** WHAT: only successful logons. WHY: a quiet, healthy log. */
+	/**
+	 * WHAT:   Only successful logons.
+	 * WHY:    A quiet, healthy log.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void OnlySuccesses()
 	{
 		Assert.Empty(Detector.Run(Enumerable.Range(0, 50).Select(i => TestData.Success(i * 10, "alice")), Settings));
 	}
 
-	/** WHAT: the same IPv6 source in upper and lower case. WHY: "2001:DB8::1" and "2001:db8::1" are one address. */
+	/**
+	 * WHAT:   The same IPv6 source in upper and lower case.
+	 * WHY:    "2001:DB8::1" and "2001:db8::1" are one address.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SourcesIgnoreCase()
 	{
@@ -62,7 +95,12 @@ public class EdgeCaseTests
 		Assert.Single(new BruteForceRule().Evaluate(Detector.Prepare(events), Settings));
 	}
 
-	/** WHAT: one source both brute-forcing and spraying. WHY: both patterns are real, so both rules report. */
+	/**
+	 * WHAT:   One source both brute-forcing and spraying.
+	 * WHY:    Both patterns are real, so both rules report.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void OneSourceCanTriggerTwoRules()
 	{
@@ -73,14 +111,24 @@ public class EdgeCaseTests
 		Assert.Contains("password-spray", rules);
 	}
 
-	/** WHAT: a success with no failures before it. WHY: the most common event of all must never alert. */
+	/**
+	 * WHAT:   A success with no failures before it.
+	 * WHY:    The most common event of all must never alert.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void SuccessWithoutFailures()
 	{
 		Assert.Empty(new SuccessAfterFailuresRule().Evaluate([TestData.Success(0)], Settings));
 	}
 
-	/** WHAT: local failures from many accounts. WHY: a shared PC with several users mistyping is not a distributed attack. */
+	/**
+	 * WHAT:   Local failures from many accounts.
+	 * WHY:    A shared PC with several users mistyping is not a distributed attack.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void LocalFailuresAreNotDistributed()
 	{
@@ -88,7 +136,12 @@ public class EdgeCaseTests
 		Assert.Empty(new DistributedAttackRule().Evaluate(Detector.Prepare(events), Settings));
 	}
 
-	/** WHAT: account names with accents and spaces. WHY: real names are not only ASCII. */
+	/**
+	 * WHAT:   Account names with accents and spaces.
+	 * WHY:    Real names are not only ASCII.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void UnicodeAccountNames()
 	{
@@ -97,7 +150,12 @@ public class EdgeCaseTests
 		Assert.Contains("José Müller", alert.Summary);
 	}
 
-	/** WHAT: 100,000 events. WHY: a busy server logs that many in a day; analysis must stay fast. */
+	/**
+	 * WHAT:   100,000 events.
+	 * WHY:    A busy server logs that many in a day; analysis must stay fast.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void LargeLogIsFast()
 	{
@@ -112,7 +170,12 @@ public class EdgeCaseTests
 		Assert.True(timer.Elapsed < TimeSpan.FromSeconds(2), $"took {timer.Elapsed}");
 	}
 
-	/** WHAT: one source sending 100,000 failures in under 2 minutes. WHY: a real brute force; the window holds thousands of events at once. */
+	/**
+	 * WHAT:   One source sending 100,000 failures in under 2 minutes.
+	 * WHY:    A real brute force; the window holds thousands of events at once.
+	 * PRE:    none
+	 * RETURN: nothing; the test fails if an assertion does not hold
+	 */
 	[Fact]
 	public void HugeSingleBurstIsFast()
 	{
