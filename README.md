@@ -66,7 +66,7 @@ SIEM tools such as Splunk and Microsoft Sentinel do this at scale. logonwatch ex
 | Modern C#: records, interfaces, nullable reference types, `init`, pattern matching | throughout |
 | Testing: xUnit, 109 tests including performance on 100,000 events | `tests/` |
 
-### Part of a three-project series
+### Part of a project series
 
 Each project looks at the same network from a different side:
 
@@ -75,6 +75,7 @@ Each project looks at the same network from a different side:
 | [**portscout**](https://github.com/AoceanP/portscout) | Java 21 | the attacker's view | What ports are open, and what is running behind them? |
 | [**wiresight**](https://github.com/AoceanP/wiresight) | C++20 | the network's view | What is actually on the wire? |
 | **logonwatch** (this one) | C# / .NET 10 | the defender's view | Is someone trying to break in, and did they get in? |
+| [**tracekeep**](https://github.com/AoceanP/tracekeep) | Python | the evidence's view | Can the logs still be trusted afterwards? |
 
 portscout finds the open doors, wiresight watches the traffic going through them, and logonwatch reads the record Windows keeps of everyone who tried to walk through.
 
