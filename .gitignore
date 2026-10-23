@@ -1,0 +1,14 @@
+bin/
+obj/
+publish/
+TestResults/
+.vs/
+.idea/
+*.user
+
+# real event logs and exports contain account names and addresses; never commit them
+*.evtx
+*.jsonl
+!src/LogonWatch/Samples/*.jsonl
+report*.txt
+report*.json
