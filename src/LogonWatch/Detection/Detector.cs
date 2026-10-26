@@ -64,7 +64,9 @@ public static class Detector
 		List<LogonEvent> prepared = Prepare(events);
 
 		// 3. run each rule and merge their alerts: most severe first, then oldest first
-		return Rules.SelectMany(rule => rule.Evaluate(prepared, settings))
+		//    each alert carries its rule's ATT&CK techniques unless the rule chose its own
+		return Rules.SelectMany(rule => rule.Evaluate(prepared, settings)
+				.Select(alert => alert.Techniques.Count > 0 ? alert : alert with { Techniques = rule.Techniques }))
 			.OrderByDescending(alert => alert.Severity)
 			.ThenBy(alert => alert.First)
 			.ToList();

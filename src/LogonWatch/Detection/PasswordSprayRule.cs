@@ -25,6 +25,16 @@ public sealed class PasswordSprayRule : IDetectionRule
 
 	/**
 	 * <summary>
+	 * WHAT:   The ATT&amp;CK techniques: PasswordSpraying.
+	 * WHY:    A few passwords tried against many accounts.
+	 * PRE:    none
+	 * RETURN: the techniques
+	 * </summary>
+	 */
+	public IReadOnlyList<Technique> Techniques { get; } = [Attack.PasswordSpraying];
+
+	/**
+	 * <summary>
 	 * WHAT:   Finds bursts where one source fails against at least
 	 *         SprayAccountThreshold different accounts within SprayWindow.
 	 * WHY:    Distinct accounts, not attempts, are counted, so one user

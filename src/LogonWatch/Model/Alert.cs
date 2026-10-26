@@ -72,4 +72,18 @@ public sealed record Alert(
 	int Attempts,
 	DateTimeOffset First,
 	DateTimeOffset Last,
-	string Summary);
+	string Summary)
+{
+	/**
+	 * <summary>
+	 * WHAT:   The MITRE ATT&amp;CK techniques the alert is evidence of.
+	 * WHY:    Lets a SOC or SIEM group and search alerts by technique; filled
+	 *         in by the Detector from the rule that raised the alert, unless
+	 *         the rule chose techniques for this alert itself.
+	 * PRE:    none
+	 * RETURN: the techniques, most specific first; empty only for alerts
+	 *         built outside the Detector
+	 * </summary>
+	 */
+	public IReadOnlyList<Technique> Techniques { get; init; } = [];
+}

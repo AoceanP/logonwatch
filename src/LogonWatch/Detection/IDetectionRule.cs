@@ -23,6 +23,17 @@ public interface IDetectionRule
 
 	/**
 	 * <summary>
+	 * WHAT:   The MITRE ATT&amp;CK techniques this rule's alerts show.
+	 * WHY:    The Detector copies them onto every alert the rule raises, so
+	 *         the mapping lives next to the rule it describes.
+	 * PRE:    none
+	 * RETURN: one or more techniques, most specific first
+	 * </summary>
+	 */
+	IReadOnlyList<Technique> Techniques { get; }
+
+	/**
+	 * <summary>
 	 * WHAT:   Looks for the rule's pattern.
 	 * WHY:    The detector calls every rule the same way.
 	 * PRE:    events are sorted by time, oldest first, with service accounts

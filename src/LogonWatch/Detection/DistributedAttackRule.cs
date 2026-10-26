@@ -24,6 +24,16 @@ public sealed class DistributedAttackRule : IDetectionRule
 
 	/**
 	 * <summary>
+	 * WHAT:   The ATT&amp;CK techniques: PasswordGuessing.
+	 * WHY:    One account's password guessed from many addresses.
+	 * PRE:    none
+	 * RETURN: the techniques
+	 * </summary>
+	 */
+	public IReadOnlyList<Technique> Techniques { get; } = [Attack.PasswordGuessing];
+
+	/**
+	 * <summary>
 	 * WHAT:   Finds bursts where one account fails from at least
 	 *         DistributedSourceThreshold different remote sources within
 	 *         DistributedWindow.

@@ -73,6 +73,16 @@ public sealed class InjectionAttemptRule : IDetectionRule
 
 	/**
 	 * <summary>
+	 * WHAT:   The ATT&amp;CK techniques: ExploitPublicFacing.
+	 * WHY:    Payloads aimed at whatever reads the user name, not password guesses.
+	 * PRE:    none
+	 * RETURN: the techniques
+	 * </summary>
+	 */
+	public IReadOnlyList<Technique> Techniques { get; } = [Attack.ExploitPublicFacing];
+
+	/**
+	 * <summary>
 	 * WHAT:   Finds every logon whose user name matches a payload pattern,
 	 *         and reports them grouped by source.
 	 * WHY:    One alert per source lists every technique it tried. Severity

@@ -60,6 +60,27 @@ public static class ReportWriter
 				output.WriteLine($"  [{alert.Severity.ToString().ToUpperInvariant()}] {alert.Rule}");
 				output.WriteLine($"    {alert.Summary}");
 				output.WriteLine($"    from {Time(alert.First)} to {Time(alert.Last)} UTC");
+				if (alert.Techniques.Count > 0)
+				{
+					output.WriteLine($"    ATT&CK: {string.Join(", ", alert.Techniques)}");
+				}
+			}
+
+			// 2b. every technique seen, once, with how many alerts show it and where to read about it
+			List<(Technique Technique, int Alerts)> seen = report.Alerts.SelectMany(alert => alert.Techniques)
+				.GroupBy(technique => technique.Id)
+				.Select(group => (group.First(), group.Count()))
+				.OrderBy(item => item.Item1.Id, StringComparer.Ordinal)
+				.ToList();
+			if (seen.Count > 0)
+			{
+				output.WriteLine();
+				output.WriteLine("MITRE ATT&CK techniques seen:");
+				foreach ((Technique technique, int alerts) in seen)
+				{
+					output.WriteLine($"  {technique.Id,-10} {technique.Name,-35} {alerts,2} alert{(alerts == 1 ? " " : "s")}  "
+						+ technique.Url);
+				}
 			}
 		}
 

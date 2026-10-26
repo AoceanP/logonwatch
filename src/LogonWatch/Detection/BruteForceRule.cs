@@ -23,6 +23,16 @@ public sealed class BruteForceRule : IDetectionRule
 
 	/**
 	 * <summary>
+	 * WHAT:   The ATT&amp;CK techniques: PasswordGuessing.
+	 * WHY:    Many passwords tried from one source.
+	 * PRE:    none
+	 * RETURN: the techniques
+	 * </summary>
+	 */
+	public IReadOnlyList<Technique> Techniques { get; } = [Attack.PasswordGuessing];
+
+	/**
+	 * <summary>
 	 * WHAT:   Finds bursts of at least BruteForceThreshold failures from one
 	 *         source within BruteForceWindow.
 	 * WHY:    Severity grows with size: local bursts are Low (a person

