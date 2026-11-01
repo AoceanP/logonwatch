@@ -85,6 +85,8 @@ Each project looks at the same network from a different side:
 
 portscout finds the open doors, wiresight watches the traffic going through them, and logonwatch reads the record Windows keeps of everyone who tried to walk through.
 
+**The common thread: patient, automated attackers.** Automated attackers, including AI-driven ones, are cheap, fast and patient, so each tool answers them in its own layer. portscout shows that a rate limit makes a scan polite, not invisible. wiresight catches fast and slow scans and sweeps, and caps its own memory against SYN floods. logonwatch catches slow password guessing and spraying spread over a day. tracekeep's protocol makes every connection prove the key and solve a puzzle that gets harder after each failure. [The series overview](https://github.com/AoceanP) has the whole story.
+
 ## Setup
 
 ### 1. Install the requirements
