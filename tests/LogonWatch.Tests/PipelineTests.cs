@@ -16,7 +16,7 @@ public class PipelineTests
 {
 	/**
 	 * WHAT:   The demo scenario.
-	 * WHY:    It is the README example, so it must produce exactly these five alerts.
+	 * WHY:    It is the README example, so it must produce exactly these seven alerts.
 	 * PRE:    none
 	 * RETURN: nothing; the test fails if an assertion does not hold
 	 */
@@ -25,7 +25,8 @@ public class PipelineTests
 	{
 		List<Alert> alerts = Detector.Run(new DemoSource().Read(), new DetectionSettings());
 
-		Assert.Equal(new[] { "success-after-failures", "brute-force", "password-spray", "distributed-attack", "injection-attempt" },
+		Assert.Equal(new[] { "success-after-failures", "slow-guessing", "slow-spray", "brute-force", "password-spray",
+				"distributed-attack", "injection-attempt" },
 			alerts.Select(a => a.Rule));
 		Assert.Equal(Severity.Critical, alerts[0].Severity);
 	}

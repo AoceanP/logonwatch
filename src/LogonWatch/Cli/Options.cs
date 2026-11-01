@@ -105,6 +105,8 @@ public static class OptionsParser
 		  --since DURATION     only events from the last DURATION, e.g. 30m, 24h, 7d
 		  --threshold N        failed logons that count as brute force (default 10)
 		  --window DURATION    time they must fall within (default 5m)
+		  --slow-window DUR    window for the slow-guessing and slow-spray rules (default 24h)
+		  --slow-threshold N   failures against one account that count as slow guessing (default 20)
 		  --json               print JSON instead of text
 		  --redact             replace account names and IP addresses with placeholders
 		  -h, --help           show this help
@@ -173,6 +175,12 @@ public static class OptionsParser
 					break;
 				case "--window":
 					settings = settings with { BruteForceWindow = ParseDuration(Value(args, ref i), argument) };
+					break;
+				case "--slow-window":
+					settings = settings with { SlowWindow = ParseDuration(Value(args, ref i), argument) };
+					break;
+				case "--slow-threshold":
+					settings = settings with { SlowGuessThreshold = ParseCount(Value(args, ref i), argument) };
 					break;
 				case "--json":
 					json = true;

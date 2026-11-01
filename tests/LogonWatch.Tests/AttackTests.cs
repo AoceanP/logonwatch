@@ -37,6 +37,8 @@ public class AttackTests
 	[InlineData("password-spray", "T1110.003")]
 	[InlineData("distributed-attack", "T1110.001")]
 	[InlineData("injection-attempt", "T1190")]
+	[InlineData("slow-guessing", "T1110.001")]
+	[InlineData("slow-spray", "T1110.003")]
 	public void RuleMapsToTechnique(string rule, string id)
 	{
 		Assert.Equal([id], IdsFor(rule));
@@ -112,7 +114,7 @@ public class AttackTests
 
 		Assert.Contains("ATT&CK: T1110.003 Password Spraying (Credential Access)", text);
 		Assert.Contains("MITRE ATT&CK techniques seen:", text);
-		Assert.Matches(@"T1110\.001\s+Password Guessing\s+2 alerts", text);
+		Assert.Matches(@"T1110\.001\s+Password Guessing\s+3 alerts", text);
 	}
 
 	/**

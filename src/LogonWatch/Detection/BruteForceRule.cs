@@ -47,25 +47,46 @@ public sealed class BruteForceRule : IDetectionRule
 	 */
 	public IEnumerable<Alert> Evaluate(IReadOnlyList<LogonEvent> events, DetectionSettings settings)
 	{
+		foreach ((string source, List<LogonEvent> burst) in FindBursts(events, settings))
+		{
+			// 3. rate the burst: typed locally, normal, or five times the threshold
+			List<string> accounts = RuleText.Accounts(burst);
+			Severity severity = burst[0].IsLocal ? Severity.Low
+				: burst.Count >= settings.BruteForceThreshold * 5 ? Severity.High
+				: Severity.Medium;
+
+			yield return new Alert(Name, severity, source, accounts, burst.Count, burst[0].Time, burst[^1].Time,
+				$"{burst.Count} failed logons from {RuleText.Source(source)} in "
+				+ $"{RuleText.Duration(burst[^1].Time - burst[0].Time)} against {RuleText.Join(accounts)}");
+		}
+	}
+
+	/**
+	 * <summary>
+	 * WHAT:   The bursts this rule reports, each with the source it belongs to.
+	 * WHY:    The slow rules take these events out before counting, so an
+	 *         attack is never reported as both fast and slow, and "fast" has
+	 *         one definition: this one.
+	 * PRE:    events are sorted by time
+	 * POST:   events are not changed
+	 * RETURN: each burst's source and events
+	 * </summary>
+	 * <param name="events">the logon events</param>
+	 * <param name="settings">the thresholds and windows</param>
+	 * <returns>the bursts</returns>
+	 */
+	internal static IEnumerable<(string Key, List<LogonEvent> Burst)> FindBursts(IReadOnlyList<LogonEvent> events,
+		DetectionSettings settings)
+	{
 		// 1. one group of failures per source address ("203.0.113.7", or "-" for local)
 		foreach (IGrouping<string, LogonEvent> group in events.Where(e => e.IsFailure)
 			.GroupBy(e => e.Source, StringComparer.OrdinalIgnoreCase))
 		{
-			List<LogonEvent> failures = group.ToList();
-
 			// 2. slide a window over that source's failures; count events, not distinct values
-			foreach (List<LogonEvent> burst in Bursts.Find(failures, e => e.Time, settings.BruteForceWindow,
+			foreach (List<LogonEvent> burst in Bursts.Find(group.ToList(), e => e.Time, settings.BruteForceWindow,
 				settings.BruteForceThreshold))
 			{
-				// 3. rate the burst: typed locally, normal, or five times the threshold
-				List<string> accounts = RuleText.Accounts(burst);
-				Severity severity = burst[0].IsLocal ? Severity.Low
-					: burst.Count >= settings.BruteForceThreshold * 5 ? Severity.High
-					: Severity.Medium;
-
-				yield return new Alert(Name, severity, group.Key, accounts, burst.Count, burst[0].Time, burst[^1].Time,
-					$"{burst.Count} failed logons from {RuleText.Source(group.Key)} in "
-					+ $"{RuleText.Duration(burst[^1].Time - burst[0].Time)} against {RuleText.Join(accounts)}");
+				yield return (group.Key, burst);
 			}
 		}
 	}

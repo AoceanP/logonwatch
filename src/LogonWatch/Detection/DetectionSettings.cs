@@ -77,15 +77,45 @@ public sealed record DetectionSettings
 
 	/**
 	 * <summary>
-	 * WHAT:   Checks every threshold is at least 2 and every window is positive.
-	 * WHY:    A threshold of 1 would turn every typo into an alert, and a
-	 *         zero window would never match anything.
+	 * WHAT:   Failures against one account over SlowWindow that make a slow-guessing alert.
+	 * WHY:    An honest user mistypes a few times a day, not 20; a patient
+	 *         tool at one guess an hour reaches 20 well inside a day.
+	 * </summary>
+	 */
+	public int SlowGuessThreshold { get; init; } = 20;
+
+	/**
+	 * <summary>
+	 * WHAT:   Different accounts one source must fail against over SlowWindow to count as slow spraying.
+	 * WHY:    Twice the fast threshold: a shared address (an office behind one
+	 *         router) can fail against a few accounts in a day, not ten.
+	 * </summary>
+	 */
+	public int SlowSprayAccountThreshold { get; init; } = 10;
+
+	/**
+	 * <summary>
+	 * WHAT:   The window for the slow rules.
+	 * WHY:    A day covers an attacker pacing itself to stay under the
+	 *         5- and 10-minute windows, and logs are commonly reviewed daily.
+	 * </summary>
+	 */
+	public TimeSpan SlowWindow { get; init; } = TimeSpan.FromHours(24);
+
+	/**
+	 * <summary>
+	 * WHAT:   Checks every threshold is at least 2, every window is positive,
+	 *         and the slow window is longer than every fast one.
+	 * WHY:    A threshold of 1 would turn every typo into an alert, a zero
+	 *         window would never match anything, and a "slow" window shorter
+	 *         than a fast one would only find what the fast rules already do.
 	 * PRE:    none
 	 * POST:   nothing is changed
 	 * RETURN: nothing; returns normally when every setting is valid
 	 * THROWS: ArgumentException naming the first bad setting
 	 * </summary>
-	 * <exception cref="ArgumentException">a threshold is below 2 or a window is not positive</exception>
+	 * <exception cref="ArgumentException">a threshold is below 2, a window is not positive,
+	 *                                     or SlowWindow is not the longest window</exception>
 	 */
 	public void Validate()
 	{
@@ -93,16 +123,26 @@ public sealed record DetectionSettings
 		CheckThreshold(nameof(SprayAccountThreshold), SprayAccountThreshold);
 		CheckThreshold(nameof(DistributedSourceThreshold), DistributedSourceThreshold);
 		CheckThreshold(nameof(SuccessAfterFailuresThreshold), SuccessAfterFailuresThreshold);
+		CheckThreshold(nameof(SlowGuessThreshold), SlowGuessThreshold);
+		CheckThreshold(nameof(SlowSprayAccountThreshold), SlowSprayAccountThreshold);
 		CheckWindow(nameof(BruteForceWindow), BruteForceWindow);
 		CheckWindow(nameof(SprayWindow), SprayWindow);
 		CheckWindow(nameof(DistributedWindow), DistributedWindow);
 		CheckWindow(nameof(SuccessAfterFailuresWindow), SuccessAfterFailuresWindow);
+		CheckWindow(nameof(SlowWindow), SlowWindow);
+
+		TimeSpan longestFast = new[] { BruteForceWindow, SprayWindow, DistributedWindow }.Max();
+		if (SlowWindow <= longestFast)
+		{
+			throw new ArgumentException(
+				$"{nameof(SlowWindow)} must be longer than the fast windows ({longestFast}), got {SlowWindow}");
+		}
 	}
 
 	/**
 	 * <summary>
 	 * WHAT:   Refuses a threshold below 2.
-	 * WHY:    Keeps the rule and its message in one place for all four thresholds.
+	 * WHY:    Keeps the rule and its message in one place for every threshold.
 	 * PRE:    name is the setting's property name
 	 * RETURN: nothing
 	 * THROWS: ArgumentException if value is below 2
@@ -122,7 +162,7 @@ public sealed record DetectionSettings
 	/**
 	 * <summary>
 	 * WHAT:   Refuses a window that is zero or negative.
-	 * WHY:    Keeps the rule and its message in one place for all four windows.
+	 * WHY:    Keeps the rule and its message in one place for every window.
 	 * PRE:    name is the setting's property name
 	 * RETURN: nothing
 	 * THROWS: ArgumentException if value is not positive

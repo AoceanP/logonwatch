@@ -49,21 +49,42 @@ public sealed class DistributedAttackRule : IDetectionRule
 	 */
 	public IEnumerable<Alert> Evaluate(IReadOnlyList<LogonEvent> events, DetectionSettings settings)
 	{
+		foreach ((string account, List<LogonEvent> burst) in FindBursts(events, settings))
+		{
+			int sources = CountSources(burst);
+			yield return new Alert(Name, Severity.High, $"{sources} sources", [account], burst.Count,
+				burst[0].Time, burst[^1].Time,
+				$"{account} was attacked from {sources} different addresses ({burst.Count} attempts) in "
+				+ RuleText.Duration(burst[^1].Time - burst[0].Time));
+		}
+	}
+
+	/**
+	 * <summary>
+	 * WHAT:   The bursts this rule reports, each with the account it belongs to.
+	 * WHY:    The slow rules take these events out before counting, so an
+	 *         attack is never reported as both fast and slow, and "fast" has
+	 *         one definition: this one.
+	 * PRE:    events are sorted by time
+	 * POST:   events are not changed
+	 * RETURN: each burst's account and events
+	 * </summary>
+	 * <param name="events">the logon events</param>
+	 * <param name="settings">the thresholds and windows</param>
+	 * <returns>the bursts</returns>
+	 */
+	internal static IEnumerable<(string Key, List<LogonEvent> Burst)> FindBursts(IReadOnlyList<LogonEvent> events,
+		DetectionSettings settings)
+	{
 		// 1. the mirror image of brute force: one group per account, not per source
 		foreach (IGrouping<string, LogonEvent> group in events.Where(e => e.IsFailure && !e.IsLocal)
 			.GroupBy(e => e.User, StringComparer.OrdinalIgnoreCase))
 		{
-			List<LogonEvent> failures = group.ToList();
-
 			// 2. slide a window over the account's failures, counting distinct sources (e => e.Source)
-			foreach (List<LogonEvent> burst in Bursts.Find(failures, e => e.Time, settings.DistributedWindow,
+			foreach (List<LogonEvent> burst in Bursts.Find(group.ToList(), e => e.Time, settings.DistributedWindow,
 				settings.DistributedSourceThreshold, e => e.Source))
 			{
-				int sources = CountSources(burst);
-				yield return new Alert(Name, Severity.High, $"{sources} sources", [group.Key], burst.Count,
-					burst[0].Time, burst[^1].Time,
-					$"{group.Key} was attacked from {sources} different addresses ({burst.Count} attempts) in "
-					+ RuleText.Duration(burst[^1].Time - burst[0].Time));
+				yield return (group.Key, burst);
 			}
 		}
 	}

@@ -49,23 +49,44 @@ public sealed class PasswordSprayRule : IDetectionRule
 	 */
 	public IEnumerable<Alert> Evaluate(IReadOnlyList<LogonEvent> events, DetectionSettings settings)
 	{
+		foreach ((string source, List<LogonEvent> burst) in FindBursts(events, settings))
+		{
+			// 3. spraying is deliberate, so it is High unless typed at the machine itself
+			List<string> accounts = RuleText.Accounts(burst);
+			Severity severity = burst[0].IsLocal ? Severity.Low : Severity.High;
+
+			yield return new Alert(Name, severity, source, accounts, burst.Count, burst[0].Time, burst[^1].Time,
+				$"{RuleText.Source(source)} tried {accounts.Count} different accounts ({burst.Count} attempts) in "
+				+ $"{RuleText.Duration(burst[^1].Time - burst[0].Time)}: {RuleText.Join(accounts)}");
+		}
+	}
+
+	/**
+	 * <summary>
+	 * WHAT:   The bursts this rule reports, each with the source it belongs to.
+	 * WHY:    The slow rules take these events out before counting, so an
+	 *         attack is never reported as both fast and slow, and "fast" has
+	 *         one definition: this one.
+	 * PRE:    events are sorted by time
+	 * POST:   events are not changed
+	 * RETURN: each burst's source and events
+	 * </summary>
+	 * <param name="events">the logon events</param>
+	 * <param name="settings">the thresholds and windows</param>
+	 * <returns>the bursts</returns>
+	 */
+	internal static IEnumerable<(string Key, List<LogonEvent> Burst)> FindBursts(IReadOnlyList<LogonEvent> events,
+		DetectionSettings settings)
+	{
 		// 1. one group of failures per source address
 		foreach (IGrouping<string, LogonEvent> group in events.Where(e => e.IsFailure)
 			.GroupBy(e => e.Source, StringComparer.OrdinalIgnoreCase))
 		{
-			List<LogonEvent> failures = group.ToList();
-
 			// 2. slide a window over them, counting distinct account names (e => e.User)
-			foreach (List<LogonEvent> burst in Bursts.Find(failures, e => e.Time, settings.SprayWindow,
+			foreach (List<LogonEvent> burst in Bursts.Find(group.ToList(), e => e.Time, settings.SprayWindow,
 				settings.SprayAccountThreshold, e => e.User))
 			{
-				// 3. spraying is deliberate, so it is High unless typed at the machine itself
-				List<string> accounts = RuleText.Accounts(burst);
-				Severity severity = burst[0].IsLocal ? Severity.Low : Severity.High;
-
-				yield return new Alert(Name, severity, group.Key, accounts, burst.Count, burst[0].Time, burst[^1].Time,
-					$"{RuleText.Source(group.Key)} tried {accounts.Count} different accounts ({burst.Count} attempts) in "
-					+ $"{RuleText.Duration(burst[^1].Time - burst[0].Time)}: {RuleText.Join(accounts)}");
+				yield return (group.Key, burst);
 			}
 		}
 	}

@@ -1,6 +1,6 @@
 # logonwatch
 
-A Windows logon attack detector in C# (.NET 10): it reads the Windows Security log and finds brute-force attacks, password spraying, distributed attacks, injection payloads sent as user names, and, most importantly, logons that **succeeded** right after an attack.
+A Windows logon attack detector in C# (.NET 10): it reads the Windows Security log and finds brute-force attacks, password spraying, distributed attacks, slow attacks paced to stay under those alarms, injection payloads sent as user names, and, most importantly, logons that **succeeded** right after an attack.
 
 > **A demonstration project.** Every example, test and the built-in `--demo` scenario use fake data: invented accounts and IP addresses from the documentation ranges of RFC 5737, which belong to nobody. It also reads a real Security log, but no real log data is part of this repository.
 >
@@ -10,7 +10,7 @@ A Windows logon attack detector in C# (.NET 10): it reads the Windows Security l
 
 ### What
 
-A command-line tool that reads Windows logon events (event **4624**, logon succeeded, and **4625**, logon failed) from the live Security log, an exported `.evtx` file, or a JSON-lines file, runs five detection rules over them, and prints a report:
+A command-line tool that reads Windows logon events (event **4624**, logon succeeded, and **4625**, logon failed) from the live Security log, an exported `.evtx` file, or a JSON-lines file, runs seven detection rules over them, and prints a report:
 
 ```
 [CRITICAL] success-after-failures
@@ -35,7 +35,7 @@ But a real log holds thousands of normal entries too: services starting, compute
 
 - **Read only what matters:** an XPath query makes Windows return only events 4624 and 4625, and only events from Windows' own auditing provider are trusted, so forged look-alikes are ignored.
 - **Remove the noise:** SYSTEM, service logons and computer accounts (`DESKTOP-7$`) log on all day and are dropped before analysis.
-- **Five detection rules:**
+- **Seven detection rules:**
 
   | Rule | Pattern | Severity | MITRE ATT&CK |
   |---|---|---|---|
@@ -43,10 +43,13 @@ But a real log holds thousands of normal entries too: services starting, compute
   | **brute-force** | 10+ failures from one source within 5 min | Medium, High at 50+, Low if typed at the machine itself | T1110.001 Password Guessing |
   | **password-spray** | one source fails against 5+ different accounts within 10 min, a few tries each to stay under lockout limits | High | T1110.003 Password Spraying |
   | **distributed-attack** | one account fails from 5+ different sources within 10 min, a botnet spreading its guesses | High | T1110.001 Password Guessing |
+  | **slow-guessing** | one account fails 20+ times within 24 h, from any addresses, counting only failures no fast rule reported | Medium, High from rotating addresses, Low if typed at the machine itself | T1110.001 Password Guessing |
+  | **slow-spray** | one source fails against 10+ different accounts within 24 h, counting only failures the password-spray rule did not report | High | T1110.003 Password Spraying |
   | **injection-attempt** | the user name itself is an attack payload: SQL injection (`admin' OR '1'='1`), command injection (`; whoami`), Log4Shell (`${jndi:...}`), script tags, path traversal, format strings or control characters | High, Critical if one was accepted | T1190 Exploit Public-Facing Application |
 
-  The first four rules each use a sliding time window. The injection rule needs no window: no person types `${jndi:ldap://...}` as their name by accident, so a single one is worth an alert.
+  Every rule except injection uses a sliding time window. The injection rule needs no window: no person types `${jndi:ldap://...}` as their name by accident, so a single one is worth an alert.
 
+- **Patient attackers are caught too:** automated attackers, including AI-driven ones, can afford to wait. Three guesses an hour from addresses that keep changing never reach 10 in 5 minutes, but add up to 72 a day. The two slow rules count over 24 hours. Before counting, they take out every failure a fast rule already reported, so one attack is never reported twice. Taking out only those failures, rather than ignoring the whole day, still catches an attacker who bursts once and then carries on slowly.
 - **One alert per attack:** overlapping windows merge, so a 2-hour attack is one alert, not thousands.
 - **Tagged with MITRE ATT&CK:** every alert names the techniques it is evidence of, in the text report and as `techniques` (id, name, tactic, link) in JSON. ATT&CK is the shared vocabulary of security teams, so a SIEM or analyst can search for `T1110.003` and find every password spray, whichever tool raised it.
 - **Shareable reports:** `--redact` replaces every account name and address with a placeholder before analysis. Attack payloads are kept, because they are not personal data and hiding them would hide the attack.
@@ -60,13 +63,14 @@ SIEM tools such as Splunk and Microsoft Sentinel do this at scale. logonwatch ex
 | Windows Security auditing, events 4624 and 4625, logon types, NTSTATUS codes | `SecurityEventParser.cs` |
 | Attack patterns: brute force, password spraying, distributed attacks, account takeover | `Detection/*Rule.cs` |
 | Sliding-window detection in linear time | `Bursts.cs` |
+| Low-and-slow attacks: long windows, without reporting fast attacks twice | `SlowGuessingRule.cs`, `SlowSprayRule.cs` |
 | Mapping detections to MITRE ATT&CK techniques and tactics | `Model/Technique.cs`, each rule's `Techniques` |
 | Recognising injection payloads (SQLi, command injection, Log4Shell, XSS) with ReDoS-safe, non-backtracking regexes | `InjectionAttemptRule.cs` |
 | Reading the event log with XPath, admin rights, `.evtx` files | `WindowsEventLogSource.cs` |
 | Trusting only the real event provider (anti-forgery) | `SecurityEventParser.AuditingProvider` |
 | Privacy: redaction, read-only, nothing stored | `Redactor.cs` |
 | Modern C#: records, interfaces, nullable reference types, `init`, pattern matching | throughout |
-| Testing: xUnit, 119 tests including performance on 100,000 events | `tests/` |
+| Testing: xUnit, 134 tests including performance on 100,000 events | `tests/` |
 
 ### Part of a project series
 
@@ -102,7 +106,7 @@ cd logonwatch
 dotnet test
 ```
 
-It ends with `Passed! - Failed: 0, Passed: 119`.
+It ends with `Passed! - Failed: 0, Passed: 134`.
 
 ### 4. Try the demo
 
@@ -110,7 +114,7 @@ It ends with `Passed! - Failed: 0, Passed: 119`.
 dotnet run --project src/LogonWatch -- --demo
 ```
 
-No admin rights or real attack needed: a built-in scenario triggers all five rules.
+No admin rights or real attack needed: a built-in scenario triggers all seven rules.
 
 ### 5. Check your own PC
 
@@ -154,6 +158,8 @@ logonwatch <input> [options]
 | `--since DURATION` | only events from the last `30m`, `24h`, `7d`... | all |
 | `--threshold N` | failed logons that count as brute force | `10` |
 | `--window DURATION` | the time they must fall within | `5m` |
+| `--slow-window DURATION` | the window for the slow-guessing and slow-spray rules; must be longer than every fast window | `24h` |
+| `--slow-threshold N` | failures against one account that count as slow guessing | `20` |
 | `--json` | print JSON instead of text | off |
 | `--redact` | replace account names and IP addresses with placeholders | off |
 
@@ -173,14 +179,24 @@ One logon per line; blank lines and lines starting with `#` are skipped:
 
 ```
 > logonwatch --demo
-logonwatch: 90 logon events from built-in demo scenario (86 failed, 4 successful)
+logonwatch: 124 logon events from built-in demo scenario (120 failed, 4 successful)
 
-5 alerts:
+7 alerts:
 
   [CRITICAL] success-after-failures
     administrator logged on from 203.0.113.7 after 60 failed attempts in 2 min: treat this account as compromised
     from 2026-10-21 10:01:00 to 2026-10-21 10:03:05 UTC
     ATT&CK: T1078 Valid Accounts (Initial Access), T1110 Brute Force (Credential Access), T1021.001 Remote Desktop Protocol (Lateral Movement)
+
+  [HIGH] slow-guessing
+    22 failed logons against operator over 22.8 h from 3 different addresses, too slow for the brute-force rule
+    from 2026-10-20 09:00:00 to 2026-10-21 07:45:00 UTC
+    ATT&CK: T1110.001 Password Guessing (Credential Access)
+
+  [HIGH] slow-spray
+    203.0.113.80 tried 12 different accounts (12 attempts) over 20.2 h, too slow for the password-spray rule: ftp, oracle, postgres (+9 more)
+    from 2026-10-20 10:10:00 to 2026-10-21 06:20:00 UTC
+    ATT&CK: T1110.003 Password Spraying (Credential Access)
 
   [HIGH] brute-force
     60 failed logons from 203.0.113.7 in 2 min against administrator
@@ -206,17 +222,19 @@ MITRE ATT&CK techniques seen:
   T1021.001  Remote Desktop Protocol              1 alert   https://attack.mitre.org/techniques/T1021/001/
   T1078      Valid Accounts                       1 alert   https://attack.mitre.org/techniques/T1078/
   T1110      Brute Force                          1 alert   https://attack.mitre.org/techniques/T1110/
-  T1110.001  Password Guessing                    2 alerts  https://attack.mitre.org/techniques/T1110/001/
-  T1110.003  Password Spraying                    1 alert   https://attack.mitre.org/techniques/T1110/003/
+  T1110.001  Password Guessing                    3 alerts  https://attack.mitre.org/techniques/T1110/001/
+  T1110.003  Password Spraying                    2 alerts  https://attack.mitre.org/techniques/T1110/003/
   T1190      Exploit Public-Facing Application    1 alert   https://attack.mitre.org/techniques/T1190/
 
 Most failed logons by source:
       60  203.0.113.7
+      12  203.0.113.80
        8  198.51.100.23
-       4  192.0.2.66
-       2  this machine
-       2  192.0.2.101
+       8  198.51.100.40
+       7  198.51.100.41
 ```
+
+The day before, two patient attackers stay under every fast threshold. One guesses `operator`'s password once every 65 minutes from three addresses in turn. The other tries a different account every 110 minutes. Only the slow rules see them.
 
 The scenario also contains normal activity that must **not** alert: two successful logons, a user mistyping their password twice at the keyboard, a computer account and a SYSTEM logon. All addresses come from the documentation ranges of RFC 5737, so none is real.
 
@@ -240,7 +258,7 @@ If you save a report or export a log, treat the file as sensitive and don't comm
 1. **Read:** the chosen source returns `LogonEvent`s. For Windows logs, an XPath query asks only for events 4624 and 4625 (and `--since` filters by time inside Windows), and each event's XML is parsed by `SecurityEventParser`.
 2. **Trust:** events not written by `Microsoft-Windows-Security-Auditing` are ignored, because any program with the right permission can write a fake event 4625 under its own name.
 3. **Clean:** `Detector.Prepare` drops SYSTEM, service logons (types 0 and 5) and computer accounts, then sorts by time, since combined logs are not always in order.
-4. **Detect:** each rule groups failures (by source, or by account for distributed attacks) and runs `Bursts.Find`, a two-pointer sliding window that counts events or distinct accounts/sources as they enter and leave the window. Overlapping qualifying windows merge into one burst, so one attack gives one alert. Success-after-failures binary-searches to the window before each success. The injection rule matches every user name against payload patterns using .NET's non-backtracking regex engine, so even a crafted 200,000-character name is checked in linear time.
+4. **Detect:** each rule groups failures (by source, or by account for distributed attacks) and runs `Bursts.Find`, a two-pointer sliding window that counts events or distinct accounts/sources as they enter and leave the window. Overlapping qualifying windows merge into one burst, so one attack gives one alert. The slow rules first collect the events in every fast burst (each fast rule exposes its bursts through `FindBursts`, so "fast" has one definition), then run the same sliding window over what is left with a 24-hour width. Success-after-failures binary-searches to the window before each success. The injection rule matches every user name against payload patterns using .NET's non-backtracking regex engine, so even a crafted 200,000-character name is checked in linear time.
 5. **Report:** alerts are sorted most severe first, then oldest first, and printed as text or JSON.
 
 ## Design
@@ -257,7 +275,7 @@ Both diagrams are drawn in draw.io: [logonwatch-flow.drawio](docs/logonwatch-flo
 
 ## Tests
 
-119 xUnit tests in `tests/LogonWatch.Tests`, run with `dotnet test`. They need no admin rights and no real attack: the parser is tested with the exact XML Windows produces.
+134 xUnit tests in `tests/LogonWatch.Tests`, run with `dotnet test`. They need no admin rights and no real attack: the parser is tested with the exact XML Windows produces.
 
 | File | What it covers |
 |---|---|
@@ -266,6 +284,7 @@ Both diagrams are drawn in draw.io: [logonwatch-flow.drawio](docs/logonwatch-flo
 | `PipelineTests.cs` | the demo, service-account filtering, JSON-lines input and errors, redaction, reports, the command line and exit codes |
 | `InjectionTests.cs` | 15 real attack payloads, 9 real names that must not be flagged, grouping, redaction, safe printing, ReDoS |
 | `EdgeCaseTests.cs` | boundaries and odd data (see below), plus performance on 100,000 events |
+| `SlowAttackTests.cs` | both slow rules at and below their thresholds, failures spread over days, rotating addresses, local failures, a fast attack not reported twice, a burst followed by a slow attack, the slow window settings and options |
 | `AttackTests.cs` | the ATT&CK technique for every rule, RDP added only for Remote Desktop logons, every rule tagged, MITRE link format, text and JSON output |
 
 The main project builds with **warnings as errors and documentation required**: a public member without a doc comment fails the build.
@@ -276,6 +295,7 @@ The main project builds with **warnings as errors and documentation required**: 
 
 - [x] Five detection rules, live log, `.evtx` and JSON-lines input, text and JSON reports, redaction
 - [x] Tag every alert with its MITRE ATT&CK techniques
+- [x] Slow-attack rules: guessing and spraying paced to stay under the fast windows
 - [ ] Watch mode: follow the live log and alert as attacks happen
 - [ ] Account lockouts (event 4740) and Kerberos failures (event 4771)
 - [ ] Linux input: convert `/var/log/auth.log` SSH failures into the same detector
@@ -302,6 +322,10 @@ Every case below is covered by a test in [`EdgeCaseTests.cs`](tests/LogonWatch.T
 | Failures an hour before a success (`RuleTests.cs`) | no alert | outside the window, unrelated |
 | Three successes right after one attack (`RuleTests.cs`) | one alert | one break-in, one alert |
 | A success with no failures | no alert | the most common event of all |
+| 20 failures on one account, one an hour (`SlowAttackTests.cs`) | slow-guessing | too slow for brute force, too many for a person |
+| 30 failures, one every 2 hours (`SlowAttackTests.cs`) | no alert | no 24 hours hold 20 of them |
+| 60 failures in 2 minutes (`SlowAttackTests.cs`) | brute force only | the same attack is not reported as slow too |
+| 10 fast failures, then 20 at one an hour (`SlowAttackTests.cs`) | brute force and slow-guessing | the attacker slowed down after the burst |
 
 ### Identity and addresses
 

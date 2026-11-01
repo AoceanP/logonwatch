@@ -1,5 +1,40 @@
 # logonwatch demo scenario, 2026-10-21 (UTC). All addresses are documentation ranges (RFC 5737).
-# Expected: success-after-failures, injection-attempt, brute-force, password-spray and distributed-attack alerts.
+# Expected: success-after-failures, injection-attempt, brute-force, password-spray, distributed-attack, slow-guessing and slow-spray alerts.
+# The day before: a patient guesser rotating 3 addresses (one try every 65 min) and a slow sprayer (one account every 110 min).
+{"time":"2026-10-20T09:00:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.40","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T10:05:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.41","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T10:10:00Z","outcome":"failure","user":"ftp","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-20T11:10:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.42","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T12:00:00Z","outcome":"failure","user":"oracle","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-20T12:15:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.40","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T13:20:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.41","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T13:50:00Z","outcome":"failure","user":"postgres","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-20T14:25:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.42","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T15:30:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.40","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T15:40:00Z","outcome":"failure","user":"nagios","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-20T16:35:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.41","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T17:30:00Z","outcome":"failure","user":"deploy","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-20T17:40:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.42","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T18:45:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.40","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T19:20:00Z","outcome":"failure","user":"jenkins","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-20T19:50:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.41","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T20:55:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.42","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T21:10:00Z","outcome":"failure","user":"git","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-20T22:00:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.40","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-20T23:00:00Z","outcome":"failure","user":"hr","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-20T23:05:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.41","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T00:10:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.42","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T00:50:00Z","outcome":"failure","user":"finance","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T01:15:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.40","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T02:20:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.41","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T02:40:00Z","outcome":"failure","user":"reception","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T03:25:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.42","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T04:30:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.40","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T04:30:00Z","outcome":"failure","user":"printer","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T05:35:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.41","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T06:20:00Z","outcome":"failure","user":"kiosk","domain":"WORKSTATION","source":"203.0.113.80","logonType":3,"reason":"user does not exist"}
+{"time":"2026-10-21T06:40:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.42","logonType":3,"reason":"wrong password"}
+{"time":"2026-10-21T07:45:00Z","outcome":"failure","user":"operator","domain":"WORKSTATION","source":"198.51.100.40","logonType":3,"reason":"wrong password"}
 {"time":"2026-10-21T08:00:00Z","outcome":"success","user":"alice","domain":"WORKSTATION","source":"192.0.2.10","logonType":3}
 {"time":"2026-10-21T08:30:00Z","outcome":"success","user":"DESKTOP-7$","domain":"WORKSTATION","source":"192.0.2.10","logonType":3}
 {"time":"2026-10-21T08:31:00Z","outcome":"success","user":"SYSTEM","domain":"WORKSTATION","source":"-","logonType":5}

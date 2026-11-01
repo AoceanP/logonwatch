@@ -28,7 +28,7 @@ public static class Detector
 	 * WHAT:   The rules, most important first.
 	 * WHY:    A new rule only needs to be added to this list.
 	 * PRE:    none
-	 * RETURN: the five rules
+	 * RETURN: the seven rules
 	 * </summary>
 	 */
 	public static IReadOnlyList<IDetectionRule> Rules { get; } =
@@ -38,6 +38,8 @@ public static class Detector
 		new BruteForceRule(),
 		new PasswordSprayRule(),
 		new DistributedAttackRule(),
+		new SlowGuessingRule(),
+		new SlowSprayRule(),
 	];
 
 	/**
